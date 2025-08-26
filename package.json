@@ -1,0 +1,41 @@
+{
+	"name": "als-wasm-loader",
+	"private": "true",
+	"version": "0.1.0",
+	"publisher": "qbane",
+	"engines": {
+		"vscode": "^1.89.0"
+	},
+	"license": "MIT",
+	"repository": "https://github.com/qbane/vscode-als-wasm-loader",
+	"displayName": "Agda Language Server WASM Loader",
+	"description": "WebAssembly loader and runtime for Agda Language Server",
+	"main": "./dist/desktop/extension.js",
+	"browser": "./dist/web/extension.js",
+	"activationEvents": ["onStartupFinished"],
+	"types": "./types.d.ts",
+	"files": [
+		"LICENSE",
+		"dist/",
+		"vscode-wasm/wasm-wasi-core/package.json",
+		"vscode-wasm/wasm-wasi-core/dist/{desktop,web}/mainWorker.js*",
+		"vscode-wasm/wasm-wasi-core/dist/{desktop,web}/threadWorker.js*"
+	],
+	"devDependencies": {
+		"@types/node": "^22.15.30",
+		"@types/vscode": "1.89.0",
+		"esbuild": "^0.25.5",
+		"typescript": "^5.8.3"
+	},
+	"dependencies": {
+		"@agda-web/wasm-wasi-core": "file:vscode-wasm/wasm-wasi-core",
+		"@agda-web/wasm-wasi-lsp": "file:vscode-wasm/wasm-wasi-lsp",
+		"@vscode/wasm-wasi": "^1.0.1"
+	},
+	"scripts": {
+		"build:core": "./build-vscode-wasm.sh",
+		"build": "npm run compile && npm run esbuild",
+		"compile": "tsc -p tsconfig.json",
+		"esbuild": "node ./bin/esbuild.js"
+	}
+}

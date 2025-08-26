@@ -1,0 +1,6 @@
+node_modules/
+/dist
+/als-wasm-loader*.vsix
+/*.js
+/.vscode-test-web/
+

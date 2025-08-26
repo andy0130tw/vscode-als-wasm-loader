@@ -1,0 +1,23 @@
+{
+    auto_https off
+}
+
+:8765 {
+    file_server {
+        browse
+    }
+    log
+
+    @options {
+        method OPTIONS
+    }
+
+    respond @options 204
+
+    header {
+        Access-Control-Allow-Headers *
+        Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+        Access-Control-Allow-Origin *
+        Cross-Origin-Resource-Policy cross-origin                                           
+    }
+}

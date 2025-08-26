@@ -1,0 +1,3 @@
+[submodule "vscode-wasm"]
+	path = vscode-wasm
+	url = git@github.com:agda-web/vscode-wasm.git

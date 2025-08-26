@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Extension (native)",
+        "type": "extensionHost",
+        "request": "launch",
+        "skipFiles": ["<node_internals>/**"],
+        "args": ["--extensionDevelopmentPath=${workspaceRoot}"],
+        "preLaunchTask": "Build"
+      },
+      {
+        "name": "Extension (web)",
+        "type": "extensionHost",
+        "debugWebWorkerHost": true,
+        "request": "launch",
+        "skipFiles": ["<node_internals>/**"],
+        "args": [
+          "--extensionDevelopmentPath=${workspaceRoot}",
+          "--extensionDevelopmentKind=web"
+        ],
+        "preLaunchTask": "Build"
+      },
+    ]
+  }

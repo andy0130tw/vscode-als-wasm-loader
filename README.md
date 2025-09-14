@@ -46,3 +46,9 @@ client.onRequest('agda', (res, opts) => {
   // TODO: add your own callback handling logic
 })
 ```
+
+# Acknowledgements
+
+The included WASM WASI Core Extension fixes some WASM/WASI issues to satisfy Haskell-based WASM modules' need, including but not limited to:
+
+* https://github.com/microsoft/vscode-wasm/pull/226

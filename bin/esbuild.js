@@ -9,16 +9,20 @@ const esbuild = require('esbuild');
  * @typedef {import('esbuild').BuildOptions} BuildOptions
  */
 
-/** @type BuildOptions */
+/** @type {BuildOptions} */
 const sharedWebOptions = {
 	bundle: true,
 	external: ['vscode'],
 	target: 'es2020',
 	platform: 'browser',
+	alias: {
+   // FIXME: wasm-wasi-lsp also needs separate node/web builds to pick the correct impl.
+	  'vscode-languageclient': 'vscode-languageclient/browser',
+	},
 	sourcemap: true,
 };
 
-/** @type BuildOptions */
+/** @type {BuildOptions} */
 const webOptions = {
 	entryPoints: ['extension.ts'],
 	outfile: 'dist/web/extension.js',
@@ -26,16 +30,19 @@ const webOptions = {
 	...sharedWebOptions,
 };
 
-/** @type BuildOptions */
+/** @type {BuildOptions} */
 const sharedDesktopOptions = {
 	bundle: true,
 	external: ['vscode'],
 	target: 'es2020',
 	platform: 'node',
+	alias: {
+	  'vscode-languageclient': 'vscode-languageclient/node',
+	},
 	sourcemap: true,
 };
 
-/** @type BuildOptions */
+/** @type {BuildOptions} */
 const desktopOptions = {
 	entryPoints: ['extension.ts'],
 	outfile: 'dist/desktop/extension.js',

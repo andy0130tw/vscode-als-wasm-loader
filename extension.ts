@@ -29,10 +29,6 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
     }
   })
 
-  debugger
-  const res = await fetch('https://raw.githubusercontent.com/agda-web/agda-language-server/refs/heads/wasm/BUILDING_WASM.md')
-  console.log(await res.text())
-
   class AgdaLanguageServerFactory {
     static HOME = '/home/user'
     static Agda_datadir = '/opt/agda'

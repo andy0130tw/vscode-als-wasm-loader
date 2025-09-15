@@ -29,7 +29,9 @@ const mod = WebAssembly.compile(alsWasmRaw)
 
 const factory = new AgdaLanguageServerFactory(wasm, mod)
 const memfsAgdaDataDir = await wasm.createMemoryFileSystem()
-// TODO: prepare memfs
+// TODO: prepare memfs like below:
+// const resp = await fetch('path/to/agda-data.zip')
+// ext.exports.prepareMemfsFromAgdaDataZip(await resp.bytes(), memfsAgdaDataDir)
 
 const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   // TODO: process options

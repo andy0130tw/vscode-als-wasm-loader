@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { MemoryFileSystem, MountPointDescriptor, ProcessOptions, Wasm } from '@vscode/wasm-wasi/v1'
 import type { ALSWasmLoaderExports } from './types'
 
@@ -14,6 +9,7 @@ import {
   createUriConverters,
   startServer,
 } from '@agda-web/wasm-wasi-lsp'
+import { prepareMemfsFromAgdaDataZip } from './zip-utils'
 
 export async function activate(context: ExtensionContext): Promise<ALSWasmLoaderExports> {
   const coreDir = 'vscode-wasm/wasm-wasi-core'
@@ -112,6 +108,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
     AgdaLanguageServerFactory,
     WasmAPILoader,
     createUriConverters,
+    prepareMemfsFromAgdaDataZip,
   }
 }
 

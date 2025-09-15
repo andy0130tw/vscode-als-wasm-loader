@@ -21,4 +21,5 @@ declare interface ALSWasmLoaderExports {
   WasmAPILoader: APILoader
   // to be used in the `uriConverters` property of client options
   createUriConverters: () => URIConverters
+  prepareMemfsFromAgdaDataZip: (data: Uint8Array, memfs: MemoryFileSystem) => Promise<MemoryFileSystem>
 }

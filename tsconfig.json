@@ -9,6 +9,7 @@
 	},
 	"include": [
 		"extension.ts",
+		"zip-utils.ts",
 		"ambient.d.ts",
 		"types.d.ts"
 	]

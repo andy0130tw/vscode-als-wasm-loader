@@ -1,5 +1,5 @@
-import type { MemoryFileSystem, MountPointDescriptor, ProcessOptions, Wasm } from '@vscode/wasm-wasi/v1'
-import type { ALSWasmLoaderExports } from './types'
+import type { MemoryFileSystem, MountPointDescriptor, ProcessOptions, Readable, Wasm } from '@vscode/wasm-wasi/v1'
+import type { ALSServerOptions, ALSWasmLoaderExports } from './types'
 
 import { ExtensionContext, Uri, workspace } from 'vscode'
 
@@ -10,6 +10,15 @@ import {
   startServer,
 } from '@agda-web/wasm-wasi-lsp'
 import { prepareMemfsFromAgdaDataZip } from './zip-utils'
+
+function collectPipeOutput(readable: Readable) {
+  let result = ''
+  const decoder = new TextDecoder()
+  readable.onData(data => {
+    result += decoder.decode(data, { stream: true })
+  })
+  return () => (result + decoder.decode()).trimEnd()
+}
 
 export async function activate(context: ExtensionContext): Promise<ALSWasmLoaderExports> {
   const coreDir = 'vscode-wasm/wasm-wasi-core'
@@ -26,8 +35,10 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
   })
 
   class AgdaLanguageServerFactory {
-    static HOME = '/home/user'
-    static Agda_datadir = '/opt/agda'
+    static defaultEnv = {
+      HOME: '/home/user',
+      Agda_datadir: '/opt/agda',
+    }
 
     constructor(readonly wasm: Wasm, readonly module: WebAssembly.Module) {}
 
@@ -38,18 +49,39 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
       return err
     }
 
-    async createServer(memfsAgdaDataDir: MemoryFileSystem, processOptions: Partial<ProcessOptions> = {}) {
+    async createServer(
+      memfsAgdaDataDir: MemoryFileSystem,
+      processOptions: Partial<ProcessOptions> = {},
+      options: ALSServerOptions = {}) {
+
       const memfsTempDir = await this.wasm.createMemoryFileSystem()
       const memfsHome = await this.wasm.createMemoryFileSystem()
 
-      const { HOME, Agda_datadir } = AgdaLanguageServerFactory
+      const env = AgdaLanguageServerFactory.defaultEnv
 
       const mountPoints: MountPointDescriptor[] = [
         { kind: 'workspaceFolder' },
         { kind: 'memoryFileSystem', fileSystem: memfsTempDir, mountPoint: '/tmp' },
-        { kind: 'memoryFileSystem', fileSystem: memfsHome, mountPoint: HOME },
-        { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: Agda_datadir },
+        { kind: 'memoryFileSystem', fileSystem: memfsHome, mountPoint: env.HOME },
+        { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: env.Agda_datadir },
       ]
+
+      if (options.runSetupFirst) {
+        const setupProcess = await this.wasm.createProcess('als', this.module, {
+          env,
+          args: ['--setup'],
+          stdio: { out: { kind: 'pipeOut' }, err: { kind: 'pipeOut' } },
+          mountPoints,
+        })
+        const stdoutDone = collectPipeOutput(setupProcess.stdout)
+        const stderrDone = collectPipeOutput(setupProcess.stderr)
+        const setupExitCode = await setupProcess.run()
+        if (options.setupCallback == null && setupExitCode !== 0) {
+          throw new Error(`server failed at setup step: stdout=[${stdoutDone()}] stderr=[${stderrDone()}]`)
+        }
+
+        options.setupCallback?.(setupExitCode, stderrDone())
+      }
 
       // patch the stdin pipe
       const stdio = createStdioOptions()
@@ -68,10 +100,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         maximum: 1024,
         shared: true,
       }, {
-        env: {
-          HOME,
-          Agda_datadir,
-        },
+        env,
         stdio,
         args: [
           '+RTS', '-V1', '-RTS',
@@ -90,13 +119,9 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         stdio: { out: { kind: 'pipeOut' } },
       })
 
-      let result = ''
-      const decoder = new TextDecoder()
-      process.stdout.onData(data => {
-        result += decoder.decode(data, { stream: true })
-      })
+      const done = collectPipeOutput(process.stdout)
       await process.run()
-      return (result + decoder.decode()).trimEnd()
+      return done()
     }
 
     queryVersionString() {

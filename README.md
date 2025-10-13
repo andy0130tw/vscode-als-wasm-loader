@@ -29,12 +29,16 @@ const mod = WebAssembly.compile(alsWasmRaw)
 
 const factory = new AgdaLanguageServerFactory(wasm, mod)
 const memfsAgdaDataDir = await wasm.createMemoryFileSystem()
-// TODO: prepare memfs like below:
+// TODO: may need to prepare memfs like below:
 // const resp = await fetch('path/to/agda-data.zip')
 // ext.exports.prepareMemfsFromAgdaDataZip(await resp.bytes(), memfsAgdaDataDir)
 
 const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   // TODO: process options
+}, {
+  // NOTE: see the note section below
+  // runSetupFirst: true,
+  // setupCallback(code, stderr) {},
 })
 const clientOptions = {
   // TODO: add more client options
@@ -48,6 +52,12 @@ client.onRequest('agda', (res, opts) => {
   // TODO: add your own callback handling logic
 })
 ```
+
+## Note on the setup step
+
+Starting with newer ALS (containing [this patch](https://github.com/agda/agda-language-server/pull/39)) powered by Agda v2.8.0 or later, you can skip the memfs preparation step with the option `runSetupFirst`. The factory will run command `als --setup` before actually running the server, extracting data files (~600 kB) to the memfs' datadir. The downside is that no interface file for Agda built-ins will be written due to memfs being read-only (for now).
+
+The setup step can be monitored by passing a function to `setupCallback`. If this step fails and the callback is not set, the server will crash before its start.
 
 # Acknowledgements
 

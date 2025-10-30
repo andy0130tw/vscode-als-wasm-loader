@@ -65,7 +65,9 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
       const memfsTempDir = await this.wasm.createMemoryFileSystem()
       const memfsHome = await this.wasm.createMemoryFileSystem()
 
-      const env = AgdaLanguageServerFactory.defaultEnv
+      const env = options.env ?
+        { ...AgdaLanguageServerFactory.defaultEnv, ...options.env } :
+        AgdaLanguageServerFactory.defaultEnv
 
       const mountPoints: MountPointDescriptor[] = [
         { kind: 'workspaceFolder' },
@@ -74,7 +76,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: env.Agda_datadir },
       ]
 
-      options.presetupCallback?.({
+      await options.presetupCallback?.({
         memfsTempDir,
         memfsHome,
         memfsAgdaDataDir,
@@ -115,7 +117,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         shared: true,
         ...options.memoryOptions,
       }, {
-        env: {...env, ...options.env},
+        env,
         stdio,
         args: options.args ?? ['+RTS', '-V1', '-RTS'],
         mountPoints,

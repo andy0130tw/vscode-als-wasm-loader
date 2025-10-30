@@ -35,7 +35,7 @@ interface _ALSServerOptions {
     memfsTempDir: MemoryFileSystem,
     memfsHome: MemoryFileSystem,
     memfsAgdaDataDir: MemoryFileSystem,
-  }) => void
+  }) => Promise<void>
   memoryOptions: Partial<WebAssembly.MemoryDescriptor>,
   setupCallback: (exitCode: number, result: string) => void
   env: Environment

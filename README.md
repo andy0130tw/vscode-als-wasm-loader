@@ -41,8 +41,8 @@ const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   //   '+RTS', '-V1', '-RTS',  /* the default args */
   //   '+AGDA', '... Agda args here ...', '-AGDA'
   // ],
-  // presetupCallback({memfsTempDir, memfsHome, memfsAgdaDataDir}) {
-  //   // TODO
+  // async presetupCallback({memfsTempDir, memfsHome, memfsAgdaDataDir}) {
+  //   // you might want to put configs or libraries in the file system
   // },
   // NOTE: see the note section below
   // runSetupFirst: true,

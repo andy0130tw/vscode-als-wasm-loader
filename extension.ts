@@ -89,8 +89,8 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
           stdio: { out: { kind: 'pipeOut' }, err: { kind: 'pipeOut' } },
           mountPoints,
         })
-        const stdoutDone = collectPipeOutput(setupProcess.stdout)
-        const stderrDone = collectPipeOutput(setupProcess.stderr)
+        const stdoutDone = collectPipeOutput(setupProcess.stdout!)
+        const stderrDone = collectPipeOutput(setupProcess.stderr!)
         const setupExitCode = await setupProcess.run()
         if (options.setupCallback == null && setupExitCode !== 0) {
           throw new Error(`server failed at setup step: stdout=[${stdoutDone()}] stderr=[${stderrDone()}]`)
@@ -133,7 +133,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         stdio: { out: { kind: 'pipeOut' } },
       })
 
-      const done = collectPipeOutput(process.stdout)
+      const done = collectPipeOutput(process.stdout!)
       await process.run()
       return done()
     }

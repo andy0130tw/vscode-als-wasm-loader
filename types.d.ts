@@ -24,8 +24,9 @@ declare class AgdaLanguageServerFactory {
 declare interface ALSWasmLoaderExports {
   AgdaLanguageServerFactory: typeof AgdaLanguageServerFactory
   WasmAPILoader: APILoader
-  // to be used in the `uriConverters` property of client options
-  createUriConverters: () => URIConverters
+
+  /** to be used in the `uriConverters` property of client options */
+  createUriConverters: () => URIConverters | undefined
   prepareMemfsFromAgdaDataZip: (data: Uint8Array, memfs: MemoryFileSystem) => Promise<MemoryFileSystem>
 }
 

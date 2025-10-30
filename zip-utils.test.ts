@@ -9,7 +9,7 @@ it('filters', async () => {
 
   async function count(filter = (_: string) => true, debug = false) {
     let dir = 0, files = 0
-    await memfsUnzipPrim(zip, '', filter, (path, file) => {
+    memfsUnzipPrim(zip, '', filter, (path, file) => {
       if (debug) console.log('+', path)
       if (file.dir) dir++
       else files++

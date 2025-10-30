@@ -34,7 +34,7 @@ export async function memfsUnzip(memfs: MemoryFileSystem, data: Uint8Array, opti
   return memfs
 }
 
-export async function memfsUnzipPrim(
+export function memfsUnzipPrim(
   zip: JSZip, prefix: string, filter: MemfsUnzipOptions['filter'],
   callback: (path: string, file: JSZip.JSZipObject) => void) {
 

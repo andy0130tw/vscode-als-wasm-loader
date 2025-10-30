@@ -51,8 +51,16 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
 
     async createServer(
       memfsAgdaDataDir: MemoryFileSystem,
-      processOptions: Partial<ProcessOptions> = {},
+      processOptions: Partial<Omit<ProcessOptions, 'env' | 'args'>> = {},
       options: ALSServerOptions = {}) {
+
+      if ('env' in processOptions) {
+        throw new Error('Should pass env from the options parameter')
+      }
+
+      if ('args' in processOptions) {
+        throw new Error('Should pass args from the options parameter')
+      }
 
       const memfsTempDir = await this.wasm.createMemoryFileSystem()
       const memfsHome = await this.wasm.createMemoryFileSystem()
@@ -65,6 +73,12 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         { kind: 'memoryFileSystem', fileSystem: memfsHome, mountPoint: env.HOME },
         { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: env.Agda_datadir },
       ]
+
+      options.presetupCallback?.({
+        memfsTempDir,
+        memfsHome,
+        memfsAgdaDataDir,
+      })
 
       if (options.runSetupFirst) {
         const setupProcess = await this.wasm.createProcess('als', this.module, {
@@ -99,13 +113,11 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         initial: 256,
         maximum: 1024,
         shared: true,
+        ...options.memoryOptions,
       }, {
-        env,
+        env: {...env, ...options.env},
         stdio,
-        args: [
-          '+RTS', '-V1', '-RTS',
-          // workaround (but to hide it) for the path issue which I haven't dig into
-          '+AGDA', '-WnoDuplicateInterfaceFiles', '-AGDA'],
+        args: options.args ?? ['+RTS', '-V1', '-RTS'],
         mountPoints,
         ...processOptions,
       })

@@ -1,5 +1,5 @@
 import { startServer } from '@agda-web/wasm-wasi-lsp'
-import { MemoryFileSystem, ProcessOptions, Wasm } from '@vscode/wasm-wasi/v1'
+import { Environment, MemoryFileSystem, ProcessOptions, Wasm } from '@vscode/wasm-wasi/v1'
 import { Uri } from 'vscode'
 
 export interface APILoader {
@@ -31,7 +31,15 @@ declare interface ALSWasmLoaderExports {
 
 interface _ALSServerOptions {
   runSetupFirst: boolean
+  presetupCallback: (filesystems: {
+    memfsTempDir: MemoryFileSystem,
+    memfsHome: MemoryFileSystem,
+    memfsAgdaDataDir: MemoryFileSystem,
+  }) => void
+  memoryOptions: Partial<WebAssembly.MemoryDescriptor>,
   setupCallback: (exitCode: number, result: string) => void
+  env: Environment
+  args: string[]
 }
 
 export interface ALSServerOptions extends Partial<_ALSServerOptions> {}

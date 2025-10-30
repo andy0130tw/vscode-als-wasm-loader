@@ -36,6 +36,14 @@ const memfsAgdaDataDir = await wasm.createMemoryFileSystem()
 const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   // TODO: process options
 }, {
+  // env: { ENV: 'EXTRA_ENVS' },
+  // args: [
+  //   '+RTS', '-V1', '-RTS',  /* the default args */
+  //   '+AGDA', '... Agda args here ...', '-AGDA'
+  // ],
+  // presetupCallback({memfsTempDir, memfsHome, memfsAgdaDataDir}) {
+  //   // TODO
+  // },
   // NOTE: see the note section below
   // runSetupFirst: true,
   // setupCallback(code, stderr) {},

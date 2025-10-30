@@ -38,6 +38,7 @@
 	"scripts": {
 		"build:core": "./build-vscode-wasm.sh",
 		"build": "npm run compile && npm run esbuild",
+		"test": "npx tsx zip-utils.test.ts",
 		"compile": "tsc -p tsconfig.json",
 		"esbuild": "node ./bin/esbuild.js"
 	}

@@ -29,9 +29,8 @@ const mod = WebAssembly.compile(alsWasmRaw)
 
 const factory = new AgdaLanguageServerFactory(wasm, mod)
 const memfsAgdaDataDir = await wasm.createMemoryFileSystem()
-// TODO: may need to prepare memfs like below:
-// const resp = await fetch('path/to/agda-data.zip')
-// ext.exports.prepareMemfsFromAgdaDataZip(await resp.bytes(), memfsAgdaDataDir)
+// TODO: may need to populate memfsAgdaDataDir;
+// see the note section "Preparing the memory filesystems" below
 
 const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   // TODO: process options
@@ -44,7 +43,6 @@ const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   // async presetupCallback({memfsTempDir, memfsHome, memfsAgdaDataDir}) {
   //   // you might want to put configs or libraries in the file system
   // },
-  // NOTE: see the note section below
   // runSetupFirst: true,
   // setupCallback(code, stderr) {},
 })
@@ -61,7 +59,19 @@ client.onRequest('agda', (res, opts) => {
 })
 ```
 
-## Note on the setup step
+## Note: Preparing the memory filesystems
+
+You need a copy of Agda's built-in files to be extracted in the memfs for Agda to function properly. This loader provides a helper function `memfsUnzip` for this task:
+
+```js
+// const ext = extensions.getExtension('qbane.als-wasm-loader')
+const resp = await fetch('path/to/agda-data.zip')
+await ext.exports.memfsUnzip(memfsAgdaDataDir, await resp.bytes())
+```
+
+You can setup other memfs' in the hook `presetupCallback`. Be careful of mount points!
+
+### The setup step (Agda v2.8.0 or later)
 
 Starting with newer ALS (containing [this patch](https://github.com/agda/agda-language-server/pull/39)) powered by Agda v2.8.0 or later, you can skip the memfs preparation step with the option `runSetupFirst`. The factory will run command `als --setup` before actually running the server, extracting data files (~600 kB) to the memfs' datadir. The downside is that no interface file for Agda built-ins will be written due to memfs being read-only (for now).
 

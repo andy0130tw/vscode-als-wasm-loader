@@ -9,7 +9,7 @@ import {
   createUriConverters,
   startServer,
 } from '@agda-web/wasm-wasi-lsp'
-import { prepareMemfsFromAgdaDataZip } from './zip-utils'
+import { memfsUnzip, prepareMemfsFromAgdaDataZip } from './zip-utils'
 
 function collectPipeOutput(readable: Readable) {
   let result = ''
@@ -76,11 +76,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: env.Agda_datadir },
       ]
 
-      await options.presetupCallback?.({
-        memfsTempDir,
-        memfsHome,
-        memfsAgdaDataDir,
-      })
+      await options.presetupCallback?.({ memfsTempDir, memfsHome })
 
       if (options.runSetupFirst) {
         const setupProcess = await this.wasm.createProcess('als', this.module, {
@@ -147,6 +143,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
     AgdaLanguageServerFactory,
     WasmAPILoader,
     createUriConverters,
+    memfsUnzip,
     prepareMemfsFromAgdaDataZip,
   }
 }

@@ -1,1 +1,1 @@
-A placeholder until the package stabilized.
+A placeholder until the package stabilizes.

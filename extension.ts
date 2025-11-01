@@ -84,6 +84,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
           args: ['--setup'],
           stdio: { out: { kind: 'pipeOut' }, err: { kind: 'pipeOut' } },
           mountPoints,
+          ...processOptions,
         })
         const stdoutDone = collectPipeOutput(setupProcess.stdout!)
         const stderrDone = collectPipeOutput(setupProcess.stderr!)

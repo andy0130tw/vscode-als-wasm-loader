@@ -1,8 +1,8 @@
 # Agda Language Server WASM Loader
 
-A helper extension to load and spin up a functional instance of the WebAssembly build of Agda Language Server.
+A helper extension to load and spin up a functional instance of the WebAssembly build of Agda Language Server. 
 
-This extension is designed to work jointly with [Agda mode for VS Code](https://marketplace.visualstudio.com/items?itemName=banacorn.agda-mode), and contains a patched instance of [WASM WASI Core Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.wasm-wasi-core). As a result, the consumer of this package is expected to prepare a [WASM module](https://github.com/agda/agda-language-server) compiled with `WebAssembly.compile`, along with all data files and interface files, placed in a in-memory VFS.
+Designed to work jointly with [Agda mode for VS Code](https://marketplace.visualstudio.com/items?itemName=banacorn.agda-mode), this extension contains a patched instance of the [WASM WASI Core Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.wasm-wasi-core). Consequently, the consumer of this package is expected to prepare a [WASM module](https://github.com/agda/agda-language-server) that is compiled with `WebAssembly.compile`, along with all data files and interface files, placed in a in-memory VFS.
 
 # Sample usage
 
@@ -33,7 +33,7 @@ const memfsAgdaDataDir = await wasm.createMemoryFileSystem()
 // see the note section "Preparing the memory filesystems" below
 
 const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
-  // TODO: process options
+  // TODO: extra process options for vscode-wasm
 }, {
   // env: { ENV: 'EXTRA_ENVS' },
   // args: [
@@ -63,7 +63,7 @@ client.onRequest('agda', (res, opts) => {
 
 You need a copy of Agda's built-in files to be extracted in the memfs for Agda to function properly. This loader provides a helper function `memfsUnzip` for this task:
 
-```js
+```ts
 // const ext = extensions.getExtension('qbane.als-wasm-loader')
 const resp = await fetch('path/to/agda-data.zip')
 await ext.exports.memfsUnzip(memfsAgdaDataDir, await resp.bytes())
@@ -73,9 +73,9 @@ You can setup other memfs' in the hook `presetupCallback`. Be careful of mount p
 
 ### The setup step (Agda v2.8.0 or later)
 
-Starting with newer ALS (containing [this patch](https://github.com/agda/agda-language-server/pull/39)) powered by Agda v2.8.0 or later, you can skip the memfs preparation step with the option `runSetupFirst`. The factory will run command `als --setup` before actually running the server, extracting data files (~600 kB) to the memfs' datadir. The downside is that no interface file for Agda built-ins will be written due to memfs being read-only (for now).
+Starting with newer ALS (containing [this patch](https://github.com/agda/agda-language-server/pull/39)) powered by Agda v2.8.0 or later, you can skip the memfs preparation step with the option `runSetupFirst`. The factory will run command `als --setup` before actually running the server, extracting data files (in v2.8.0 this is ~600 kB) to the memfs' datadir. The downside is that no interface file for Agda built-ins will be written due to memfs being read-only at runtime (for now).
 
-The setup step can be monitored by passing a function to `setupCallback`. If this step fails and the callback is not set, the server will crash before its start.
+The setup step can be monitored by passing a function to `setupCallback`, which is called once the setup process is exited, with the exit code and the piped content of stderr as parameters, respectively. If this step fails and the callback is not set, the server will crash before its start.
 
 # Acknowledgements
 

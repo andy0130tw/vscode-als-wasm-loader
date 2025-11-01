@@ -4,7 +4,8 @@
 	"version": "0.6.1",
 	"publisher": "qbane",
 	"engines": {
-		"vscode": "^1.89.0"
+		"vscode": "^1.89.0",
+		"node": ">=20 <25"
 	},
 	"license": "MIT",
 	"repository": "https://github.com/qbane/vscode-als-wasm-loader",
@@ -37,6 +38,8 @@
 		"jszip": "^3.10.1"
 	},
 	"scripts": {
+		"prepare": "npm run build:core -- --npm-ci",
+		"vscode:prepublish": "npm run build:core && npm run build",
 		"build:core": "./build-vscode-wasm.sh",
 		"build": "npm run compile && npm run esbuild",
 		"test": "npx tsx zip-utils.test.ts",

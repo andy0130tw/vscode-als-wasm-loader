@@ -1,6 +1,6 @@
 # Agda Language Server WASM Loader
 
-A helper extension to load and spin up a functional instance of the WebAssembly build of Agda Language Server. 
+A helper extension to load and spin up a functional instance of the WebAssembly build of Agda Language Server.
 
 Designed to work jointly with [Agda mode for VS Code](https://marketplace.visualstudio.com/items?itemName=banacorn.agda-mode), this extension contains a patched instance of the [WASM WASI Core Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.wasm-wasi-core). Consequently, the consumer of this package is expected to prepare a [WASM module](https://github.com/agda/agda-language-server) that is compiled with `WebAssembly.compile`, along with all data files and interface files, placed in a in-memory VFS.
 
@@ -40,7 +40,7 @@ const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   //   '+RTS', '-V1', '-RTS',  /* the default args */
   //   '+AGDA', '... Agda args here ...', '-AGDA'
   // ],
-  // async presetupCallback({memfsTempDir, memfsHome, memfsAgdaDataDir}) {
+  // async presetupCallback({ memfsTempDir, memfsHome }) {
   //   // you might want to put configs or libraries in the file system
   // },
   // runSetupFirst: true,

@@ -69,7 +69,8 @@ export function memfsUnzipPrim(
       return
     }
 
-    callback(prefix + '/' + relpathOrig, file)
+    // omit the leading "/"
+    callback((prefix + '/' + relpathOrig).slice(1), file)
   })
 }
 

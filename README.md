@@ -81,4 +81,5 @@ The setup step can be monitored by passing a function to `setupCallback`, which 
 
 The included WASM WASI Core Extension fixes some WASM/WASI issues to satisfy Haskell-based WASM modules' need, including but not limited to:
 
-* https://github.com/microsoft/vscode-wasm/pull/226
+* [vscode-wasm #226: fix assumptions about how fd\_prestat\_get may be called](https://github.com/microsoft/vscode-wasm/pull/226)
+* [vscode-wasm #205: Optimize fd\_write for Performance Improvements](https://github.com/microsoft/vscode-wasm/pull/205); requires Node 20, which in turn requires VS Code desktop 1.90.0 or a modern browser.

@@ -1,4 +1,4 @@
-import type { MemoryFileSystem, MountPointDescriptor, ProcessOptions, Readable, Wasm, WasmProcess } from '@vscode/wasm-wasi/v1'
+import type { MemoryFileSystem, MountPointDescriptor, ProcessOptions, Readable, Wasm } from '@vscode/wasm-wasi/v1'
 import type {
   AgdaLanguageServerFactory as AgdaLanguageServerFactoryType,
   ALSServerOptions,
@@ -6,7 +6,7 @@ import type {
   DisposableMessageTransports,
 } from './types'
 
-import { Uri, workspace, type ExtensionContext, type Disposable } from 'vscode'
+import { Uri, workspace, type ExtensionContext } from 'vscode'
 
 import * as WasmWasiCore from '@agda-web/wasm-wasi-core'
 import {
@@ -15,7 +15,6 @@ import {
   startServer,
 } from '@agda-web/wasm-wasi-lsp'
 import { memfsUnzip, prepareMemfsFromAgdaDataZip } from './zip-utils'
-import type { MessageTransports } from 'vscode-languageclient'
 
 function collectPipeOutput(readable: Readable) {
   let result = ''

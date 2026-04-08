@@ -11,11 +11,12 @@ type URIConverters = {
   protocol2Code: (value: string) => Uri,
 }
 
-interface DisposableMessageTransports extends MessageTransports {
+/** the extended interface of `MessageTransports` that can be used to terminate the underlying WASM process. */
+export interface DisposableMessageTransports extends MessageTransports {
   dispose(): Promise<number>
 }
 
-declare class AgdaLanguageServerFactory implements Disposable {
+export class AgdaLanguageServerFactory implements Disposable {
   static defaultEnv: {
     HOME: string,
     Agda_datadir: string,
@@ -38,9 +39,9 @@ interface _MemfsUnzipOptions {
   filter: (path: string) => boolean
 }
 
-declare interface MemfsUnzipOptions extends Partial<_MemfsUnzipOptions> {}
+export interface MemfsUnzipOptions extends Partial<_MemfsUnzipOptions> {}
 
-declare interface ALSWasmLoaderExports {
+export interface ALSWasmLoaderExports {
   AgdaLanguageServerFactory: typeof AgdaLanguageServerFactory
   WasmAPILoader: APILoader
 
@@ -54,7 +55,7 @@ declare interface ALSWasmLoaderExports {
   prepareMemfsFromAgdaDataZip: (data: Uint8Array, memfs: MemoryFileSystem) => Promise<MemoryFileSystem>
 }
 
-interface _ALSServerOptions {
+export interface _ALSServerOptions {
   runSetupFirst: boolean
   presetupCallback: (filesystems: {
     memfsTempDir: MemoryFileSystem,

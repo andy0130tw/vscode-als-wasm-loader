@@ -6,12 +6,18 @@ Designed to work jointly with [Agda mode for VS Code](https://marketplace.visual
 
 # Sample usage
 
-Use this in your extension activation script as a starting point:
+Use this in your extension's activation script as a starting point:
 
 ```ts
 import { LanguageClient, LanguageClientOptions } from 'vscode-languageclient'
+import { Uri } from 'vscode'
 
 const ext = extensions.getExtension('qbane.als-wasm-loader')
+
+if (ext == null) {
+  // prompt the user to install it
+  throw new Error('extension is not installed or is not enabled.')
+}
 
 if (!ext.isActive) {
   await ext.activate()
@@ -32,6 +38,7 @@ const memfsAgdaDataDir = await wasm.createMemoryFileSystem()
 // TODO: may need to populate memfsAgdaDataDir;
 // see the note section "Preparing the memory filesystems" below
 
+let transportStore = { transport: null }
 const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   // TODO: extra process options for vscode-wasm
 }, {
@@ -45,7 +52,9 @@ const serverOptions = () => factory.createServer(memfsAgdaDataDir, {
   // },
   // runSetupFirst: true,
   // setupCallback(code, stderr) {},
-})
+}).then(t => transportStore.transport = t)
+// store `transportStore` to allow disposal; see the note section "On cleaning up" below
+
 const clientOptions = {
   // TODO: add more client options
   uriConverters: createUriConverters(),
@@ -57,7 +66,19 @@ client.registerProposedFeatures()
 client.onRequest('agda', (res, opts) => {
   // TODO: add your own callback handling logic
 })
+
+client.start()
 ```
+
+If you are using TypeScript, include the type definition `types.d.ts` to have a better experience.
+
+## Note: On cleaning up
+
+When the language client is busy, stopping the language client will not terminate the WASM module immediately.
+
+The transport object returned from `AgdaLanguageServerFactory.createServer` implements the [Disposable](https://vscode-api.netlify.app/classes/vscode.disposable) interface. When its `dispose` method is called, the worker executing the WASM module will be terminated (if it is running), and a promise resolving to the exit code is returned. As illustrated in the example, it is very hacky to retain a reference to the transport object while fully adhering to the API structure and avoiding monkey-patching anything.
+
+The factory itself is also a Disposable. Disposing it will terminate all workers created from it. You can register it to your extension's [`context.subscriptions`](https://vscode-api.netlify.app/interfaces/vscode.extensioncontext#subscriptions).
 
 ## Note: Preparing the memory filesystems
 
@@ -82,4 +103,4 @@ The setup step can be monitored by passing a function to `setupCallback`, which 
 The included WASM WASI Core Extension fixes some WASM/WASI issues to satisfy Haskell-based WASM modules' need, including but not limited to:
 
 * [vscode-wasm #226: fix assumptions about how fd\_prestat\_get may be called](https://github.com/microsoft/vscode-wasm/pull/226)
-* [vscode-wasm #205: Optimize fd\_write for Performance Improvements](https://github.com/microsoft/vscode-wasm/pull/205); requires Node 20, which in turn requires VS Code desktop 1.90.0 or a modern browser.
+* [vscode-wasm #205: Optimize fd\_write for Performance Improvements](https://github.com/microsoft/vscode-wasm/pull/205); requires Node 20, which in turn requires VS Code desktop 1.90.0, or a modern browser. Fallback implementation is included.

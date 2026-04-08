@@ -109,8 +109,8 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
       stdio.in = { kind: 'pipeIn', pipe: stdinPipe }
 
       const process = await this.wasm.createProcess('als', this.module, {
-        initial: 256,
-        maximum: 1024,
+        initial: 1,  // we do not use threads, so it is a waste to allocate this
+        maximum: 1,
         shared: true,
         ...options.memoryOptions,
       }, {

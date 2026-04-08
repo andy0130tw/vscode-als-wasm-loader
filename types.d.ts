@@ -1,6 +1,6 @@
-import { startServer } from '@agda-web/wasm-wasi-lsp'
 import { Environment, MemoryFileSystem, ProcessOptions, Wasm } from '@vscode/wasm-wasi/v1'
-import { Uri } from 'vscode'
+import { Uri, Disposable } from 'vscode'
+import { MessageTransports } from 'vscode-languageclient'
 
 export interface APILoader {
   load: () => Wasm
@@ -11,14 +11,24 @@ type URIConverters = {
   protocol2Code: (value: string) => Uri,
 }
 
-declare class AgdaLanguageServerFactory {
+interface DisposableMessageTransports extends MessageTransports {
+  dispose(): Promise<number>
+}
+
+declare class AgdaLanguageServerFactory implements Disposable {
   static defaultEnv: {
     HOME: string,
     Agda_datadir: string,
     [k: string]: string,
   }
   constructor(wasm: Wasm, module: WebAssembly.Module)
-  createServer(memfsAgdaDataDir: MemoryFileSystem, processOptions?: Partial<ProcessOptions>): ReturnType<typeof startServer>
+  createServer(
+    memfsAgdaDataDir: MemoryFileSystem,
+    processOptions?: Partial<ProcessOptions>,
+    options?: ALSServerOptions): Promise<DisposableMessageTransports>
+
+  queryVersionString(): Promise<string>
+  dispose(): Promise<[DisposableMessageTransports, number][]>
 }
 
 interface _MemfsUnzipOptions {

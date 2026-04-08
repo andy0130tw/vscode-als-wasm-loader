@@ -9,4 +9,10 @@ declare module '@agda-web/wasm-wasi-core' {
       }
     }
   }) => Promise<import('./types').APILoader>
+
+  type ReadableStream = {
+    read(): Promise<Uint8Array>
+    read(mode: 'max', size: number): Promise<Uint8Array>
+    read(mode?: 'max', size?: number): Promise<Uint8Array>
+  }
 }

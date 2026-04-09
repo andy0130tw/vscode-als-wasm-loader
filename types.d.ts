@@ -13,8 +13,11 @@ type URIConverters = {
 
 /** the extended interface of `MessageTransports` that can be used to terminate the underlying WASM process. */
 export interface DisposableMessageTransports extends MessageTransports {
+  /** new in v0.7.0 */
   dispose(): Promise<number>
 }
+
+export type UserProcessOptions = Omit<ProcessOptions, 'env' | 'args'>
 
 export class AgdaLanguageServerFactory implements Disposable {
   static defaultEnv: {
@@ -25,10 +28,11 @@ export class AgdaLanguageServerFactory implements Disposable {
   constructor(wasm: Wasm, module: WebAssembly.Module)
   createServer(
     memfsAgdaDataDir: MemoryFileSystem,
-    processOptions?: Partial<ProcessOptions>,
+    processOptions?: UserProcessOptions,
     options?: ALSServerOptions): Promise<DisposableMessageTransports>
 
   queryVersionString(): Promise<string>
+  /** new in v0.7.0 */
   dispose(): Promise<[DisposableMessageTransports, number][]>
 }
 
@@ -55,7 +59,7 @@ export interface ALSWasmLoaderExports {
   prepareMemfsFromAgdaDataZip: (data: Uint8Array, memfs: MemoryFileSystem) => Promise<MemoryFileSystem>
 }
 
-export interface _ALSServerOptions {
+interface _ALSServerOptions {
   runSetupFirst: boolean
   presetupCallback: (filesystems: {
     memfsTempDir: MemoryFileSystem,

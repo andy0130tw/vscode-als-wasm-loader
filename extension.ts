@@ -4,6 +4,7 @@ import type {
   ALSServerOptions,
   ALSWasmLoaderExports,
   DisposableMessageTransports,
+  UserProcessOptions,
 } from './types'
 
 import { Uri, workspace, type ExtensionContext } from 'vscode'
@@ -58,7 +59,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
 
     async createServer(
       memfsAgdaDataDir: MemoryFileSystem,
-      processOptions: Partial<Omit<ProcessOptions, 'env' | 'args'>> = {},
+      processOptions: UserProcessOptions = {},
       options: ALSServerOptions = {}) {
 
       if ('env' in processOptions) {
@@ -98,7 +99,10 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         const stderrDone = collectPipeOutput(setupProcess.stderr!)
         const setupExitCode = await setupProcess.run()
         if (options.setupCallback == null && setupExitCode !== 0) {
-          throw new Error(`server failed at setup step: stdout=[${stdoutDone()}] stderr=[${stderrDone()}]`)
+          const stdout = stdoutDone()
+          const stderr = stderrDone()
+          const err = new Error(`server failed at setup step: stdout=[${stdout}] stderr=[${stderr}]`)
+          Object.assign(err, { stdout, stderr })
         }
 
         options.setupCallback?.(setupExitCode, stderrDone())
@@ -128,16 +132,16 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         this.aliveTransports.delete(transports)
         return ret
       }
-      ;(transports as any)._process = process
+      Object.assign(transports, { _process: process })
 
       return transports
     }
 
     private createStdio() {
       const stdio = createStdioOptions()
-      const stdinPipe = this.wasm.createWritable()
-      const origRead = (stdinPipe as unknown as WasmWasiCore.ReadableStream).read.bind(stdinPipe)
-      ;(stdinPipe as any).read = function(mode?: 'max', size?: number) {
+      const stdinPipe = this.wasm.createWritable() as WasmWasiCore.WritableStream
+      const origRead = stdinPipe.read.bind(stdinPipe)
+      stdinPipe.read = function (mode?: 'max', size?: number) {
         if (this.fillLevel === 0) {
           throw AgdaLanguageServerFactory.eagain()
         }
@@ -163,10 +167,11 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
     }
 
     dispose() {
-      const entries = Array.from(this.aliveTransports.values())
+      const txs = Array.from(this.aliveTransports.values())
 
-      return Promise.all(entries.map(async tx => {
+      return Promise.all(txs.map(async tx => {
         const ret = await tx.dispose()
+        this.aliveTransports.delete(tx)
         return [tx, ret] as [DisposableMessageTransports, number]
       }))
     }

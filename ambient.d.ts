@@ -10,7 +10,13 @@ declare module '@agda-web/wasm-wasi-core' {
     }
   }) => Promise<import('./types').APILoader>
 
-  type ReadableStream = {
+  import type { Writable } from '@vscode/wasm-wasi/v1'
+
+  /* See /vscode-wasm/wasm-wasi-core/src/common/streams.ts */
+  interface WritableStream extends Writable {
+    /** originally protected */
+    fillLevel: number
+
     read(): Promise<Uint8Array>
     read(mode: 'max', size: number): Promise<Uint8Array>
     read(mode?: 'max', size?: number): Promise<Uint8Array>

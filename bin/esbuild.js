@@ -16,10 +16,10 @@ const sharedWebOptions = {
 	target: 'es2020',
 	platform: 'browser',
 	alias: {
-   // FIXME: wasm-wasi-lsp also needs separate node/web builds to pick the correct impl.
-	  'vscode-languageclient': 'vscode-languageclient/browser',
+		'vscode-jsonrpc': 'vscode-jsonrpc/browser',
 	},
 	sourcemap: true,
+	metafile: true,
 };
 
 /** @type {BuildOptions} */
@@ -37,9 +37,10 @@ const sharedDesktopOptions = {
 	target: 'es2020',
 	platform: 'node',
 	alias: {
-	  'vscode-languageclient': 'vscode-languageclient/node',
+		'vscode-jsonrpc': 'vscode-jsonrpc/node',
 	},
 	sourcemap: true,
+	metafile: true,
 };
 
 /** @type {BuildOptions} */

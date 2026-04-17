@@ -25,15 +25,16 @@ if (!ext.isActive) {
 
 const {
   AgdaLanguageServerFactory,
-  WasmAPILoader,
   createUriConverters,
 } = ext.exports
 
-const wasm = WasmAPILoader.load()
-const alsWasmRaw = await workspace.fs.readFile(Uri.joinPath(context.extensionUri, 'path/to/als.wasm'))
+// build the factory from the given WebAssembly module
+const uriToModule = Uri.joinPath(context.extensionUri, 'path/to/als.wasm')
+const alsWasmRaw = await workspace.fs.readFile(uriToModule)
 const mod = WebAssembly.compile(alsWasmRaw)
+const factory = AgdaLanguageServerFactory.buildFromModule(mod)
+// or: await AgdaLanguageServerFactory.buildFromUri(uriToModule)
 
-const factory = new AgdaLanguageServerFactory(wasm, mod)
 const memfsAgdaDataDir = await wasm.createMemoryFileSystem()
 // TODO: may need to populate memfsAgdaDataDir;
 // see the note section "Preparing the memory filesystems" below

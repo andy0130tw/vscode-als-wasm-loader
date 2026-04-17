@@ -1,4 +1,4 @@
-import type { MemoryFileSystem, MountPointDescriptor, ProcessOptions, Readable, Wasm } from '@vscode/wasm-wasi/v1'
+import type { MemoryFileSystem, MountPointDescriptor, Readable, Wasm } from '@vscode/wasm-wasi/v1'
 import type {
   AgdaLanguageServerFactory as AgdaLanguageServerFactoryType,
   ALSServerOptions,
@@ -49,6 +49,16 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
     private aliveTransports = new Set<DisposableMessageTransports>()
 
     constructor(readonly wasm: Wasm, readonly module: WebAssembly.Module) {}
+
+    static buildFromModule(module: WebAssembly.Module) {
+      const wasm = WasmAPILoader.load()
+      return new AgdaLanguageServerFactory(wasm, module)
+    }
+
+    static async buildFromUri(uriToModule: Uri) {
+      const wasm = WasmAPILoader.load()
+      return new AgdaLanguageServerFactory(wasm, await wasm.compile(uriToModule))
+    }
 
     private static eagain(): Error {
       const err: any = new Error('This read to stdin would block')

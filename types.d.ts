@@ -6,6 +6,15 @@ export interface APILoader {
   load: () => Wasm
 }
 
+// workaround an empty interface may represent any objects
+declare global {
+  namespace WebAssembly {
+    interface Module {
+      _brand?: void
+    }
+  }
+}
+
 type URIConverters = {
   code2Protocol: (value: Uri) => string,
   protocol2Code: (value: string) => Uri,
@@ -25,13 +34,19 @@ export class AgdaLanguageServerFactory implements Disposable {
     Agda_datadir: string,
     [k: string]: string,
   }
+
   constructor(wasm: Wasm, module: WebAssembly.Module)
+
+  static buildFromModule(module: WebAssembly.Module): AgdaLanguageServerFactory
+  static buildFromUri(uriToModule: Uri): Promise<AgdaLanguageServerFactory>
+
   createServer(
     memfsAgdaDataDir: MemoryFileSystem,
     processOptions?: UserProcessOptions,
     options?: ALSServerOptions): Promise<DisposableMessageTransports>
 
   queryVersionString(): Promise<string>
+
   /** new in v0.7.0 */
   dispose(): Promise<[DisposableMessageTransports, number][]>
 }

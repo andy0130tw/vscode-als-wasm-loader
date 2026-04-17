@@ -42,6 +42,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
 
   class AgdaLanguageServerFactory implements AgdaLanguageServerFactoryType {
     static defaultEnv = {
+      TMPDIR: '/tmp',
       HOME: '/home/user',
       Agda_datadir: '/opt/agda',
     }
@@ -89,7 +90,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
 
       const mountPoints: MountPointDescriptor[] = [
         { kind: 'workspaceFolder' },
-        { kind: 'memoryFileSystem', fileSystem: memfsTempDir, mountPoint: '/tmp' },
+        { kind: 'memoryFileSystem', fileSystem: memfsTempDir, mountPoint: env.TMPDIR },
         { kind: 'memoryFileSystem', fileSystem: memfsHome, mountPoint: env.HOME },
         { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: env.Agda_datadir },
       ]

@@ -1,4 +1,4 @@
-import { Environment, MemoryFileSystem, ProcessOptions, Wasm } from '@vscode/wasm-wasi/v1'
+import { Environment, MemoryFileSystem, ProcessOptions, Wasm, MountPointDescriptor } from '@vscode/wasm-wasi/v1'
 import { Uri, Disposable } from 'vscode'
 import { MessageTransports } from 'vscode-languageclient'
 
@@ -26,6 +26,7 @@ export interface DisposableMessageTransports extends MessageTransports {
   dispose(): Promise<number>
 }
 
+/** Note that the file system options are stripped out on purpose */
 export type UserProcessOptions = Omit<ProcessOptions, 'env' | 'args'>
 
 export class AgdaLanguageServerFactory implements Disposable {
@@ -49,6 +50,11 @@ export class AgdaLanguageServerFactory implements Disposable {
 
   /** new in v0.7.0 */
   dispose(): Promise<[DisposableMessageTransports, number][]>
+}
+
+export interface UserFileSystemOptions {
+  ignoreDefaults?: boolean
+  mountpoints?: MountPointDescriptor[]
 }
 
 interface _MemfsUnzipOptions {
@@ -81,6 +87,7 @@ interface _ALSServerOptions {
     memfsHome: MemoryFileSystem,
   }) => Promise<void>
   memoryOptions: Partial<WebAssembly.MemoryDescriptor>,
+  fileSystemOptions: UserFileSystemOptions,
   setupCallback: (exitCode: number, result: string) => void
   env: Environment
   args: string[]

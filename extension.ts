@@ -81,21 +81,38 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         throw new Error('Should pass args from the options parameter')
       }
 
-      const memfsTempDir = await this.wasm.createMemoryFileSystem()
-      const memfsHome = await this.wasm.createMemoryFileSystem()
+      if ('mountPoints' in processOptions || 'rootFileSystem' in processOptions) {
+        throw new Error('Should pass mountPoints or rootFileSystem from the options parameter')
+      }
 
       const env = options.env ?
         { ...AgdaLanguageServerFactory.defaultEnv, ...options.env } :
         AgdaLanguageServerFactory.defaultEnv
 
-      const mountPoints: MountPointDescriptor[] = [
+      const agdaDataDirDesc: MountPointDescriptor =
+        { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: env.Agda_datadir }
+
+      const presetMountPoints: MountPointDescriptor[] = [
         { kind: 'workspaceFolder' },
-        { kind: 'memoryFileSystem', fileSystem: memfsTempDir, mountPoint: env.TMPDIR },
-        { kind: 'memoryFileSystem', fileSystem: memfsHome, mountPoint: env.HOME },
-        { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: env.Agda_datadir },
+        agdaDataDirDesc,
       ]
 
-      await options.presetupCallback?.({ memfsTempDir, memfsHome })
+
+      if (!options.fileSystemOptions?.ignoreDefaults) {
+        const memfsTempDir = await this.wasm.createMemoryFileSystem()
+        const memfsHome = await this.wasm.createMemoryFileSystem()
+
+        presetMountPoints.push(
+          { kind: 'memoryFileSystem', fileSystem: memfsTempDir, mountPoint: env.TMPDIR },
+          { kind: 'memoryFileSystem', fileSystem: memfsHome, mountPoint: env.HOME },
+        )
+
+        await options.presetupCallback?.({ memfsTempDir, memfsHome })
+      }
+
+      const mountPoints = options.fileSystemOptions?.mountpoints?.length ?
+        [...presetMountPoints, ...options.fileSystemOptions.mountpoints] :
+        presetMountPoints
 
       // TODO: cache the setup result to be reused
       if (options.runSetupFirst) {
@@ -103,7 +120,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
           env,
           args: ['--setup'],
           stdio: { out: { kind: 'pipeOut' }, err: { kind: 'pipeOut' } },
-          mountPoints,
+          mountPoints: [agdaDataDirDesc],
           ...processOptions,
         })
         const stdoutDone = collectPipeOutput(setupProcess.stdout!)

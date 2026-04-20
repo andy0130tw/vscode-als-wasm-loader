@@ -30,9 +30,21 @@ export interface DisposableMessageTransports extends MessageTransports {
 export type UserProcessOptions = Omit<ProcessOptions, 'env' | 'args'>
 
 export class AgdaLanguageServerFactory implements Disposable {
+  /**
+   * Environment variables that are provided to the runtime by default.
+   * The content can vary between versions, so you should treat each of them as opaque. */
   static defaultEnv: {
     HOME: string,
     Agda_datadir: string,
+    /**
+     * new in v0.8.0.
+     * The content is a path pointing to the mount point for `context.globalStorageUri`. */
+    ALSWASM_GLOBAL_STORE_DIR: string,
+    /**
+     * new in v0.8.0.
+     * The content is a path pointing to the mount point for `context.storageUri`.
+     * Note that the mount point is created only if a workspace is opened at the time the extension is activated. */
+    ALSWASM_WORKSPACE_STORE_DIR: string,
     [k: string]: string,
   }
 

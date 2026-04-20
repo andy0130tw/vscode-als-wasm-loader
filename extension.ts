@@ -45,6 +45,8 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
       TMPDIR: '/tmp',
       HOME: '/home/user',
       Agda_datadir: '/opt/agda',
+      ALSWASM_GLOBAL_STORE_DIR: '/opt/global',
+      ALSWASM_WORKSPACE_STORE_DIR: '/opt/workspace',
     }
 
     private aliveTransports = new Set<DisposableMessageTransports>()
@@ -97,7 +99,6 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         agdaDataDirDesc,
       ]
 
-
       if (!options.fileSystemOptions?.ignoreDefaults) {
         const memfsTempDir = await this.wasm.createMemoryFileSystem()
         const memfsHome = await this.wasm.createMemoryFileSystem()
@@ -105,7 +106,14 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         presetMountPoints.push(
           { kind: 'memoryFileSystem', fileSystem: memfsTempDir, mountPoint: env.TMPDIR },
           { kind: 'memoryFileSystem', fileSystem: memfsHome, mountPoint: env.HOME },
+          { kind: 'vscodeFileSystem', uri: context.globalStorageUri, mountPoint: env.ALSWASM_GLOBAL_STORE_DIR },
         )
+
+        if (context.storageUri) {
+          presetMountPoints.push(
+            { kind: 'vscodeFileSystem', uri: context.storageUri, mountPoint: env.ALSWASM_WORKSPACE_STORE_DIR },
+          )
+        }
 
         await options.presetupCallback?.({ memfsTempDir, memfsHome })
       }

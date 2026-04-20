@@ -46,5 +46,14 @@
 		"test": "npx tsx zip-utils.test.ts",
 		"compile": "tsc -p tsconfig.json",
 		"esbuild": "node ./bin/esbuild.js"
+	},
+	"contributes": {
+		"commands": [
+			{
+				"command": "als-wasm-loader.manage-libraries",
+				"category": "ALS WASM Loader",
+				"title": "Manage libraries"
+			}
+		]
 	}
 }

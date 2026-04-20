@@ -10,6 +10,7 @@
 	},
 	"include": [
 		"extension.ts",
+		"commands.ts",
 		"zip-utils.ts",
 		"ambient.d.ts",
 		"types.d.ts"

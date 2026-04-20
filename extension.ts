@@ -7,7 +7,7 @@ import type {
   UserProcessOptions,
 } from './types'
 
-import { Uri, workspace, type ExtensionContext } from 'vscode'
+import { Uri, workspace, type ExtensionContext, commands } from 'vscode'
 
 import * as WasmWasiCore from '@agda-web/wasm-wasi-core'
 import {
@@ -15,6 +15,7 @@ import {
   createUriConverters,
   startServer,
 } from '@agda-web/wasm-wasi-lsp'
+import * as ExtCommands from './commands'
 import { memfsUnzip, prepareMemfsFromAgdaDataZip } from './zip-utils'
 
 function collectPipeOutput(readable: Readable) {
@@ -212,6 +213,8 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
       }))
     }
   }
+
+  context.subscriptions.push(commands.registerCommand('als-wasm-loader.manage-libraries', ExtCommands.manageLibraries(context)))
 
   return {
     AgdaLanguageServerFactory,

@@ -27,6 +27,11 @@ function collectPipeOutput(readable: Readable) {
   return () => (result + decoder.decode()).trimEnd()
 }
 
+function memfsHasBeenSetup(memfs: MemoryFileSystem) {
+  const memfsPriv = memfs as unknown as { root: { entries: Map<string, unknown> } }
+  return memfsPriv.root.entries.has('lib')
+}
+
 export async function activate(context: ExtensionContext): Promise<ALSWasmLoaderExports> {
   const coreDir = 'vscode-wasm/wasm-wasi-core'
   const corePkgJSONRaw = await workspace.fs.readFile(Uri.joinPath(context.extensionUri, coreDir, 'package.json'))
@@ -123,8 +128,8 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         [...presetMountPoints, ...options.fileSystemOptions.mountpoints] :
         presetMountPoints
 
-      // TODO: cache the setup result to be reused
-      if (options.runSetupFirst) {
+      // XXX: we assume that the setup can be skipped if it has been initialized by caller
+      if (options.runSetupFirst && !memfsHasBeenSetup(memfsAgdaDataDir)) {
         const setupProcess = await this.wasm.createProcess('als', this.module, {
           env,
           args: ['--setup'],

@@ -1,4 +1,4 @@
-import { commands, extensions, FileType, Uri, window, workspace } from 'vscode'
+import { commands, extensions, Uri, window } from 'vscode'
 import type { LibAPI, ServerRefInfo, GitCloneOptions } from '$gitops'
 
 

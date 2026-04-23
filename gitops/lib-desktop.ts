@@ -1,6 +1,6 @@
-import { commands, extensions, FileType, window, workspace, type Uri } from 'vscode'
+import { commands, extensions, window, type Uri } from 'vscode'
 import type { LibAPI, ServerRefInfo, GitCloneOptions, RefEntry } from '$gitops'
-import type { GitExtension, API as GitAPI, Repository } from './vscode-git'
+import type { GitExtension, API as GitAPI } from './vscode-git'
 
 const decoder = new TextDecoder()
 function decode(s: Uint8Array) {

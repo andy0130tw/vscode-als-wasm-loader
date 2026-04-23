@@ -1,5 +1,17 @@
 import { fetchServerRefInfo, gitClone, RefEntry } from '$gitops'
-import { type ExtensionContext, window, workspace, Uri, FileType, QuickPickItem, QuickPickItemKind, env, UIKind, ProgressLocation, FileSystem } from 'vscode'
+import {
+  type ExtensionContext,
+  FileType,
+  ProgressLocation,
+  QuickPickItem,
+  QuickPickItemKind,
+  UIKind,
+  Uri,
+  commands,
+  env,
+  window,
+  workspace,
+} from 'vscode'
 
 interface LibraryDescriptor {
   name: string
@@ -30,6 +42,7 @@ interface InstalledLibrary {
   name: string
   version: string | null
   folderName: string
+  folderUri: Uri
   libFileName: string
 }
 
@@ -57,11 +70,46 @@ const parseLibName = (text: string): [string, string[]] => {
   return [text, []]
 }
 
-function exists(uri: Uri) {
-  return workspace.fs.stat(uri).then(() => true, err => {
-    if (err.code === 'FileNotFound') return false
-    throw err
+async function showActionPicker(item: InstalledLibraryQuickPickItem) {
+  if (!('data' in item) || !item.resourceUri) return
+  const uriToLibFolder = item.data.folderUri
+  const uriToLibFile = item.resourceUri
+
+  const choice = await window.showQuickPick([
+    {
+      iconPath: { id: 'file-code' },
+      label: 'Open library file',
+      callback: () => window.showTextDocument(uriToLibFile),
+    },
+    ...(env.uiKind === UIKind.Desktop ? [{
+      iconPath: { id: 'repo' },
+      label: 'Mount as a git repository',
+      // this will open the source control panel so showing no message should be fine
+      callback: async () => {
+        await commands.executeCommand('git.openRepository', uriToLibFolder.fsPath)
+        await commands.executeCommand('workbench.scm.repositories.focus')
+      },
+    }] : []),
+    {
+      iconPath: { id: 'trash' },
+      label: 'Delete the library',
+      callback: async () => {
+        const sure = await window.showWarningMessage(
+        `Are you sure you want to delete the library located at "${uriToLibFolder.toString()}"?`,
+        { modal: true },
+        { title: 'Yes' },
+        { title: 'No', isCloseAffordance: true })
+        if (sure?.title === 'Yes') {
+          await workspace.fs.delete(uriToLibFile, { useTrash: true })
+          window.showInformationMessage(`Deleted "${uriToLibFolder.toString()}"`)
+        }
+      },
+    },
+  ], {
+    placeHolder: `Choose the action to do with "${item.data.folderName}"...`,
   })
+
+  await choice?.callback()
 }
 
 async function pickAndInstallFromLibraryCatalog(context: ExtensionContext) {
@@ -81,7 +129,7 @@ async function pickAndInstallFromLibraryCatalog(context: ExtensionContext) {
   type RefEntryDesc = ReturnType<ReturnType<typeof refEntryToItem>>
 
   const qp = window.createQuickPick<RefEntryDesc>()
-  qp.placeholder = 'Select a tag to install...' // TODO: tag "or input a commit hash"
+  qp.placeholder = 'Select a tag or branch to clone...' // TODO: tag "or input a commit hash"
   qp.busy = true
   qp.show()
 
@@ -173,7 +221,7 @@ async function probeInstalledLibraries(root: Uri) {
     .filter(([, type]) => type & FileType.Directory)
     .map(([name]) => name)
 
-  const dirsSettled = await Promise.allSettled(dirNames.map(async dn => {
+  const dirsSettled = await Promise.allSettled(dirNames.map<Promise<InstalledLibrary | null>>(async dn => {
     const uri = Uri.joinPath(root, dn)
     const libFiles = await workspace.fs.readDirectory(uri).then(
       names => names.filter(([name, type]) => type & FileType.File && name.endsWith('.agda-lib')))
@@ -193,9 +241,10 @@ async function probeInstalledLibraries(root: Uri) {
       return {
         name: libName,
         version: libVersion.join('.'),
+        folderUri: uri,
         folderName: dn,
         libFileName: libFile,
-      } as InstalledLibrary
+      }
     } catch (err: any) {
       err.folderName = dn
       throw err
@@ -216,11 +265,11 @@ async function probeInstalledLibraries(root: Uri) {
     if (result.value) {
       const lib = result.value
       return {
-        iconPath: { id: 'library' },
+        iconPath: { id: 'folder-library' },
         label: lib.name + (lib.version ? ' \u2022 ' + lib.version : ''),
         // resourceUri as description is too lengthy
         description: lib.folderName + '/' + lib.libFileName,
-        resourceUri: Uri.joinPath(root, lib.folderName, lib.libFileName),
+        resourceUri: Uri.joinPath(lib.folderUri, lib.libFileName),
         data: lib,
         buttons: [
           ...(env.uiKind === UIKind.Desktop ?
@@ -302,6 +351,8 @@ async function _manageLibraries(context: ExtensionContext, ..._args: any[]) {
       if (item.command === 'install-a-library') {
         pickAndInstallFromLibraryCatalog(context)
       }
+    } else if ('data' in item) {
+      await showActionPicker(item)
     }
   })
 

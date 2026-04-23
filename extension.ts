@@ -214,7 +214,8 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
     }
   }
 
-  context.subscriptions.push(commands.registerCommand('als-wasm-loader.manage-libraries', ExtCommands.manageLibraries(context)))
+  context.subscriptions.push(
+    commands.registerCommand('als-wasm-loader.manage-libraries', ExtCommands.manageLibraries(context)))
 
   return {
     AgdaLanguageServerFactory,
@@ -222,6 +223,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
     createUriConverters,
     memfsUnzip,
     prepareMemfsFromAgdaDataZip,
+    listInstalledLibraries: ExtCommands.listInstalledLibraries(context),
   }
 }
 

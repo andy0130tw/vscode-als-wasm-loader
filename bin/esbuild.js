@@ -17,6 +17,7 @@ const sharedWebOptions = {
 	platform: 'browser',
 	alias: {
 		'vscode-jsonrpc': 'vscode-jsonrpc/browser',
+		'$gitops': './gitops/lib-web.js',
 	},
 	sourcemap: true,
 	metafile: true,
@@ -38,6 +39,7 @@ const sharedDesktopOptions = {
 	platform: 'node',
 	alias: {
 		'vscode-jsonrpc': 'vscode-jsonrpc/node',
+		'$gitops': './gitops/lib-desktop.js',
 	},
 	sourcemap: true,
 	metafile: true,

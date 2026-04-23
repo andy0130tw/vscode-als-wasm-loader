@@ -5,13 +5,17 @@
 		"skipLibCheck": true,
 		"strict": true,
 		"noEmit": true,
-		"lib": [ "es2020", "WebWorker"],
-		"types": ["node", "vscode"]
+		"lib": ["es2020", "WebWorker"],
+		"types": ["node", "vscode"],
+		"paths": {
+			"$gitops": ["./gitops/lib-common.d.ts"]
+		}
 	},
 	"include": [
 		"extension.ts",
 		"commands.ts",
 		"zip-utils.ts",
+		"gitops/*.ts",
 		"ambient.d.ts",
 		"types.d.ts"
 	]

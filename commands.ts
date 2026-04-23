@@ -1,4 +1,5 @@
-import { type ExtensionContext, window, workspace, Uri, FileType, QuickPickItem, QuickPickItemKind, env, UIKind } from 'vscode'
+import { fetchServerRefInfo, gitClone, RefEntry } from '$gitops'
+import { type ExtensionContext, window, workspace, Uri, FileType, QuickPickItem, QuickPickItemKind, env, UIKind, ProgressLocation, FileSystem } from 'vscode'
 
 interface LibraryDescriptor {
   name: string
@@ -29,14 +30,17 @@ interface InstalledLibrary {
   name: string
   version: string | null
   folderName: string
+  libFileName: string
 }
 
-type QuickPickItemVariant = { kind: QuickPickItemKind.Separator } | { command: string } | { data: InstalledLibrary } | { isInvalid: true }
-
-type InstalledLibraryQuickPickItem = QuickPickItem & QuickPickItemVariant & {
+type LibProbeResult = { data: InstalledLibrary } | { isInvalid: true }
+type QuickPickItemVariant = (LibProbeResult | { kind: QuickPickItemKind.Separator } | { command: string }) & {
   // newer VS Code provides integration if a URI is provided
   resourceUri?: Uri
 }
+
+type InstalledLibraryDesc = QuickPickItem & LibProbeResult
+type InstalledLibraryQuickPickItem = QuickPickItem & QuickPickItemVariant
 
 const parseLibName = (text: string): [string, string[]] => {
   const cs = Array.from(text)
@@ -53,7 +57,14 @@ const parseLibName = (text: string): [string, string[]] => {
   return [text, []]
 }
 
-async function pickAndInstallFromLibraryCatalog() {
+function exists(uri: Uri) {
+  return workspace.fs.stat(uri).then(() => true, err => {
+    if (err.code === 'FileNotFound') return false
+    throw err
+  })
+}
+
+async function pickAndInstallFromLibraryCatalog(context: ExtensionContext) {
   const libPicked = await window.showQuickPick<QuickPickItem & { descriptor: LibraryDescriptor }>(libraryCatelog.map(lib => {
     return {
       iconPath: { id: 'package' },
@@ -64,26 +75,105 @@ async function pickAndInstallFromLibraryCatalog() {
   }), { placeHolder: 'Select a library...' })
   if (libPicked == null) return
 
-  // TODO: fetch server refs
-  const commitPicked = await window.showQuickPick([{ iconPath: { id: 'tag' }, label: libPicked.descriptor.defaultRef }], {
-    placeHolder: 'Select a tag to install...', // TODO: tag "or input a commit hash"
+  // --- fetch list of refs and let user pick a commit
+
+  const refEntryToItem = (iconID: string) => ({name, oid}: RefEntry) => ({ iconPath: { id: iconID }, label: name, oid })
+  type RefEntryDesc = ReturnType<ReturnType<typeof refEntryToItem>>
+
+  const qp = window.createQuickPick<RefEntryDesc>()
+  qp.placeholder = 'Select a tag to install...' // TODO: tag "or input a commit hash"
+  qp.busy = true
+  qp.show()
+
+  fetchServerRefInfo(libPicked.descriptor.url).then(info => {
+    const tags = info.tags.map(refEntryToItem('tag'))
+    const branches = info.branches.map(refEntryToItem('git-branch'))
+
+    qp.busy = false
+    qp.items = [...tags, ...branches]
+
+    const def = tags.find(it => it.label === libPicked.descriptor.defaultRef)
+    if (def) qp.activeItems = [def]
   })
 
-  // TODO: allow to go back
+  const commitPicked = await new Promise<RefEntryDesc | undefined>(resolve => {
+    qp.onDidAccept(() => {
+      resolve(qp.selectedItems[0])
+      qp.dispose()
+    })
+    qp.onDidHide(() => {
+      resolve(undefined)
+      qp.dispose()
+    })
+  })
+
+  // XXX: allow to go back?
   if (commitPicked == null) return
 
-  await window.showInformationMessage(`You picked ${libPicked.descriptor.slug} ${commitPicked?.label}`)
+  const subdirBaseName = `${libPicked.descriptor.slug}-${commitPicked?.label}`
+  let subdirName = subdirBaseName
+  // pick a fresh name?
+  // let cnt = 0
+  // while (await exists(Uri.joinPath(context.globalStorageUri, subdirName))) {
+  //   subdirName = subdirBaseName + '-' + (++cnt)
+  // }
 
-  // TODO: install it
+  let dirCreated = false
+  const dest = Uri.joinPath(context.globalStorageUri, subdirName)
+
+  try {
+    const stat = await workspace.fs.stat(dest)
+    if (!(stat.type & FileType.Directory)) {
+      throw new Error(`URI ${dest.toString()} does not point to a directory`)
+    }
+  } catch (err: any) {
+    if (err.code !== 'FileNotFound') {
+      throw err
+    }
+    await workspace.fs.createDirectory(dest)
+    dirCreated = true
+  }
+
+  try {
+    await window.withProgress({
+      title: `Cloning ${libPicked.descriptor.slug} ${commitPicked?.label}`,
+      location: ProgressLocation.Notification,
+    }, prog => {
+      return gitClone(
+        libPicked.descriptor.url,
+        dest,
+        (commitPicked as RefEntryDesc).oid,
+        {
+          shallow: true,
+          onProgress: prog.report.bind(prog),
+        })
+    })
+  } catch (err: any) {
+    window.showErrorMessage('Failed to clone the git repository', {
+      modal: true,
+      detail: err.message,
+    })
+    if (dirCreated) {
+      await workspace.fs.delete(dest).then(() => {}, () => {})
+    }
+    throw err
+  }
+
+  window.showInformationMessage(`${libPicked.descriptor.slug} ${commitPicked?.label} is installed.`)
 }
 
 async function probeInstalledLibraries(root: Uri) {
-  const entries = await workspace.fs.readDirectory(root)
+  const entries = await Promise.resolve(workspace.fs.readDirectory(root)).catch(err => {
+    if (err.code === 'FileNotFound') {
+      return []
+    }
+    throw err
+  })
   const dirNames = entries
     .filter(([, type]) => type & FileType.Directory)
     .map(([name]) => name)
 
-  const results = await Promise.allSettled(dirNames.map(async dn => {
+  const dirsSettled = await Promise.allSettled(dirNames.map(async dn => {
     const uri = Uri.joinPath(root, dn)
     const libFiles = await workspace.fs.readDirectory(uri).then(
       names => names.filter(([name, type]) => type & FileType.File && name.endsWith('.agda-lib')))
@@ -96,17 +186,15 @@ async function probeInstalledLibraries(root: Uri) {
       const uriToLibFile = Uri.joinPath(uri, libFile)
 
       const content = new TextDecoder().decode(await workspace.fs.readFile(uriToLibFile))
-      const parsed = content.match(/^name: (.+)/m)
-      if (!parsed) {
-        throw new Error(`Could not parse "${dn}/${libFile}"`)
-      }
-
-      const [libName, libVersion] = parseLibName(parsed[1])
+      // we can keep the parsing quick and dirty because we only need to parse known libraries in catelog
+      const parsed = content.match(/^\s*name:\s*(\S+)/m)
+      const [libName, libVersion] = parseLibName(parsed ? parsed[1] : '(unnamed)')
 
       return {
         name: libName,
         version: libVersion.join('.'),
         folderName: dn,
+        libFileName: libFile,
       } as InstalledLibrary
     } catch (err: any) {
       err.folderName = dn
@@ -114,7 +202,7 @@ async function probeInstalledLibraries(root: Uri) {
     }
   }))
 
-  return results.map<InstalledLibraryQuickPickItem | null>(result => {
+  const results = dirsSettled.map<InstalledLibraryDesc | null>(result => {
     if (result.status === 'rejected') {
       const err: Error & { folderName: string } = result.reason
       return {
@@ -131,8 +219,8 @@ async function probeInstalledLibraries(root: Uri) {
         iconPath: { id: 'library' },
         label: lib.name + (lib.version ? ' \u2022 ' + lib.version : ''),
         // resourceUri as description is too lengthy
-        description: lib.folderName,
-        resourceUri: Uri.joinPath(root, lib.folderName),
+        description: lib.folderName + '/' + lib.libFileName,
+        resourceUri: Uri.joinPath(root, lib.folderName, lib.libFileName),
         data: lib,
         buttons: [
           ...(env.uiKind === UIKind.Desktop ?
@@ -142,9 +230,36 @@ async function probeInstalledLibraries(root: Uri) {
     }
     return null
   }).filter(x => !!x)
+
+  results.sort((a, b) => {
+    if ('isInvalid' in a && 'isInvalid' in b) {
+      return (a.description ?? '').localeCompare(b.description ?? '')
+    }
+
+    // to make TSC happy
+    const oneIsInvalid = (+('isInvalid' in a) - +('isInvalid' in b))
+    if (oneIsInvalid) return oneIsInvalid
+    if ('isInvalid' in a || 'isInvalid' in b) throw 0
+
+    return a.data.name.localeCompare(b.data.name) ||
+      (a.data.version ?? '').localeCompare(b.data.version ?? '') ||
+      (a.data.folderName).localeCompare(b.data.folderName)
+  })
+
+  return results
 }
 
-export async function _manageLibraries(context: ExtensionContext, ..._args: any[]) {
+async function _listInstalledLibraries(context: ExtensionContext) {
+  const entries = await probeInstalledLibraries(context.globalStorageUri)
+  const paths = entries.filter(x => ('data' in x)).map(x => x.data.folderName + '/' + x.data.libFileName)
+  return {
+    base: '$ALSWASM_GLOBAL_STORE_DIR',
+    prefix: context.globalStorageUri,
+    paths,
+  }
+}
+
+async function _manageLibraries(context: ExtensionContext, ..._args: any[]) {
   let showInvalid = false
   let items: InstalledLibraryQuickPickItem[] = []
 
@@ -185,7 +300,7 @@ export async function _manageLibraries(context: ExtensionContext, ..._args: any[
     const item = qp.selectedItems[0]
     if ('command' in item) {
       if (item.command === 'install-a-library') {
-        pickAndInstallFromLibraryCatalog()
+        pickAndInstallFromLibraryCatalog(context)
       }
     }
   })
@@ -222,4 +337,5 @@ const makeCurried = <Head = unknown, Tail extends unknown[] = unknown[], Ret = u
   (f: (ctx: Head, ...args: Tail) => Ret) =>
     (ctx: Head) => (...args: Tail) => f(ctx, ...args)
 
+export const listInstalledLibraries = makeCurried(_listInstalledLibraries)
 export const manageLibraries = makeCurried(_manageLibraries)

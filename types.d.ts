@@ -90,6 +90,12 @@ export interface ALSWasmLoaderExports {
 
   /** @deprecated use `extractToMemfs` instead */
   prepareMemfsFromAgdaDataZip: (data: Uint8Array, memfs: MemoryFileSystem) => Promise<MemoryFileSystem>
+
+  /**
+   * New in v0.8.0.
+   * Search for valid libraries installed inside the extension storage.
+   * Return a list of paths to stdlib relative to `prefix` (or `base` in VFS) */
+  listInstalledLibraries(): Promise<{ base: string, prefix: Uri, paths: string[] }>
 }
 
 interface _ALSServerOptions {

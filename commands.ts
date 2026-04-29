@@ -100,7 +100,16 @@ async function showActionPicker(item: InstalledLibraryQuickPickItem) {
         { title: 'Yes' },
         { title: 'No', isCloseAffordance: true })
         if (sure?.title === 'Yes') {
-          await workspace.fs.delete(uriToLibFile, { useTrash: true })
+          const useTrash = env.uiKind === UIKind.Desktop
+          await Promise.resolve()
+            .then(() => workspace.fs.delete(uriToLibFile, { useTrash }))
+            .catch(err => {
+              window.showErrorMessage(
+                'Failed deleting library', {
+                  modal: true,
+                  detail: `Error occurred during deleting library "${uriToLibFolder.toString()}": ${err.message}`,
+                })
+            })
           window.showInformationMessage(`Deleted "${uriToLibFolder.toString()}"`)
         }
       },

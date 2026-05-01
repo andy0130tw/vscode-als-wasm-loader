@@ -52,7 +52,7 @@
 			{
 				"command": "als-wasm-loader.manage-libraries",
 				"category": "ALS WASM Loader",
-				"title": "Manage libraries"
+				"title": "Manage libraries..."
 			}
 		]
 	}

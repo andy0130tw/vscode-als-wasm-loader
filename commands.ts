@@ -102,7 +102,7 @@ async function showActionPicker(item: InstalledLibraryQuickPickItem) {
         if (sure?.title === 'Yes') {
           const useTrash = env.uiKind === UIKind.Desktop
           await Promise.resolve()
-            .then(() => workspace.fs.delete(uriToLibFile, { useTrash }))
+            .then(() => workspace.fs.delete(uriToLibFolder, { recursive: true, useTrash }))
             .catch(err => {
               window.showErrorMessage(
                 'Failed deleting library', {

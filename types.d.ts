@@ -16,6 +16,7 @@ declare global {
 }
 
 type URIConverters = {
+  /** to convert workspace URI to WASM absolute path like `/workspace/foo/bar` */
   code2Protocol: (value: Uri) => string,
   protocol2Code: (value: string) => Uri,
 }
@@ -78,6 +79,18 @@ interface _MemfsUnzipOptions {
 
 export interface MemfsUnzipOptions extends Partial<_MemfsUnzipOptions> {}
 
+/**
+ * Return a list of paths to library files relative to `prefix` (or `base` in VFS) */
+interface LibraryEntry {
+  base: string
+  prefix: Uri
+  paths: string[]
+}
+
+export type GlobalLibraryEntry = { source: 'global', paths: string[] }
+export type LocalLibraryEntry = { source: 'workspace' | 'workspaceFolder' } & LibraryEntry
+export type ConfiguredLibraryEntry = GlobalLibraryEntry | LocalLibraryEntry
+
 export interface ALSWasmLoaderExports {
   AgdaLanguageServerFactory: typeof AgdaLanguageServerFactory
   WasmAPILoader: APILoader
@@ -93,9 +106,12 @@ export interface ALSWasmLoaderExports {
 
   /**
    * New in v0.8.0.
-   * Search for valid libraries installed inside the extension storage.
-   * Return a list of paths to stdlib relative to `prefix` (or `base` in VFS) */
-  listInstalledLibraries(): Promise<{ base: string, prefix: Uri, paths: string[] }>
+   * Search for valid libraries installed inside the extension storage. */
+  listInstalledLibraries(): Promise<LibraryEntry>
+
+  /**
+   * New in v0.9.0. */
+  listConfiguredLibraries(uri: Uri): Promise<ConfiguredLibraryEntry[]>
 }
 
 interface _ALSServerOptions {

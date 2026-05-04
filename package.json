@@ -53,7 +53,24 @@
 				"command": "als-wasm-loader.manage-libraries",
 				"category": "ALS WASM Loader",
 				"title": "Manage libraries..."
+			},
+			{
+				"command": "als-wasm-loader.list-configured-libraries",
+				"category": "ALS WASM Loader",
+				"title": "List configured libraries"
 			}
-		]
+		],
+		"configuration": {
+			"title": "Agda WASM",
+			"properties": {
+				"als-wasm-loader.libraryFilePaths": {
+					"type": "array",
+					"items": { "type": "string" },
+					"default": [],
+					"scope": "resource",
+					"markdownDescription": "Paths to [library files](https://agda.readthedocs.io/en/latest/tools/package-system.html#library-files) to be loaded by ALS-WASM. User settings are currently ignored. In workspace (when single-root) or workspace-folder (when multi-root) settings, relative paths are resolved against the corresponding workspace folder. Note that the lists from *all* different scopes will be combined per window."
+				}
+			}
+		}
 	}
 }

@@ -12,6 +12,7 @@ import {
   window,
   workspace,
 } from 'vscode'
+import type { ConfiguredLibraryEntry } from './types'
 
 interface LibraryDescriptor {
   name: string
@@ -315,6 +316,60 @@ async function _listInstalledLibraries(context: ExtensionContext) {
     prefix: context.globalStorageUri,
     paths,
   }
+}
+
+export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[]> {
+  const CONFIG_SECTION = 'als-wasm-loader'
+  const CONFIG_KEY = 'libraryFilePaths'
+
+  const resolvedConfigs: ConfiguredLibraryEntry[] = []
+
+  const folders = workspace.workspaceFolders
+  if (!folders) return []
+
+  const configSources = workspace.getConfiguration(CONFIG_SECTION)
+  const paths = configSources.inspect<string[]>(CONFIG_KEY)?.workspaceValue
+
+  if (folders.length === 1) {
+    if (paths?.length) {
+      const wsf = folders[0]
+      resolvedConfigs.push({
+        source: 'workspace',
+        prefix: wsf.uri,
+        base: '/workspace',
+        paths,
+      })
+    }
+  } else if (folders.length > 1) {
+
+    if (paths?.length) {
+      // if (workspace.workspaceFile) {
+      //   // reosolve each relative entry from workspaceFile?
+      // }
+      // XXX: warn about paths in workspace-wide setting will be ignored,
+      // since it is not available to VFS
+    }
+
+    for (const wsf of folders) {
+      const raw = workspace.getConfiguration(CONFIG_SECTION, wsf.uri)
+      const paths = raw.inspect<string[]>(CONFIG_KEY)?.workspaceFolderValue
+      if (paths?.length) {
+        resolvedConfigs.push({
+          source: 'workspaceFolder',
+          prefix: wsf.uri,
+          base: `/workspaces/${wsf.name}`,
+          paths,
+        })
+      }
+    }
+  }
+
+  window.showInformationMessage('Configured libraries:', {
+    modal: true,
+    detail: JSON.stringify(resolvedConfigs, null, 2),
+  })
+
+  return resolvedConfigs
 }
 
 async function _manageLibraries(context: ExtensionContext, ..._args: any[]) {

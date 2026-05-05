@@ -87,9 +87,11 @@ interface LibraryEntry {
   paths: string[]
 }
 
-export type GlobalLibraryEntry = { source: 'global', paths: string[] }
-export type LocalLibraryEntry = { source: 'workspace' | 'workspaceFolder' } & LibraryEntry
-export type ConfiguredLibraryEntry = GlobalLibraryEntry | LocalLibraryEntry
+export interface ConfiguredLibraryEntry {
+  source: 'global' | 'workspace' | 'workspaceFolder'
+  base: string
+  paths: string[]
+}
 
 export interface ALSWasmLoaderExports {
   AgdaLanguageServerFactory: typeof AgdaLanguageServerFactory

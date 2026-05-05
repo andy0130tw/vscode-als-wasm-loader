@@ -324,43 +324,43 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
 
   const resolvedConfigs: ConfiguredLibraryEntry[] = []
 
-  const folders = workspace.workspaceFolders
-  if (!folders) return []
+  const unscopedConfig = workspace.getConfiguration(CONFIG_SECTION)
 
-  const configSources = workspace.getConfiguration(CONFIG_SECTION)
-  const paths = configSources.inspect<string[]>(CONFIG_KEY)?.workspaceValue
+  // TODO: resolve global config
+
+  const folders = workspace.workspaceFolders
+  if (!folders?.length) return resolvedConfigs
+
+  const wsPaths = unscopedConfig.inspect<string[]>(CONFIG_KEY)?.workspaceValue
 
   if (folders.length === 1) {
-    if (paths?.length) {
-      const wsf = folders[0]
+    if (wsPaths?.length) {
       resolvedConfigs.push({
         source: 'workspace',
-        prefix: wsf.uri,
         base: '/workspace',
-        paths,
+        paths: wsPaths,
       })
     }
   } else if (folders.length > 1) {
-
-    if (paths?.length) {
-      // if (workspace.workspaceFile) {
-      //   // reosolve each relative entry from workspaceFile?
-      // }
-      // XXX: warn about paths in workspace-wide setting will be ignored,
-      // since it is not available to VFS
-    }
-
     for (const wsf of folders) {
-      const raw = workspace.getConfiguration(CONFIG_SECTION, wsf.uri)
-      const paths = raw.inspect<string[]>(CONFIG_KEY)?.workspaceFolderValue
-      if (paths?.length) {
+      const wsfConfig = workspace.getConfiguration(CONFIG_SECTION, wsf.uri)
+      const wsfPaths = wsfConfig.inspect<string[]>(CONFIG_KEY)?.workspaceFolderValue
+      if (wsfPaths?.length) {
         resolvedConfigs.push({
           source: 'workspaceFolder',
-          prefix: wsf.uri,
           base: `/workspaces/${wsf.name}`,
-          paths,
+          paths: wsfPaths,
         })
       }
+    }
+
+    if (wsPaths?.length) {
+      // this path is virtual; it makes sense only if the first component is a workspace folder path
+      resolvedConfigs.push({
+        source: 'workspace',
+        base: '/workspaces',
+        paths: wsPaths,
+      })
     }
   }
 

@@ -319,57 +319,67 @@ async function _listInstalledLibraries(context: ExtensionContext) {
 }
 
 export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[]> {
-  const CONFIG_SECTION = 'als-wasm-loader'
+  const CONFIG_SECTION = 'alsWasmLoader'
   const CONFIG_KEY = 'libraryFilePaths'
 
-  const resolvedConfigs: ConfiguredLibraryEntry[] = []
+  const configsFound: ConfiguredLibraryEntry[] = []
 
   const unscopedConfig = workspace.getConfiguration(CONFIG_SECTION)
+  const unscopedConfigSources = unscopedConfig.inspect<string[]>(CONFIG_KEY)
 
-  // TODO: resolve global config
+  const globalPaths = unscopedConfigSources?.globalValue
+  if (globalPaths?.length) {
+    configsFound.push({
+      source: 'global',
+      base: '/',
+      paths: globalPaths,
+    })
+  }
 
   const folders = workspace.workspaceFolders
-  if (!folders?.length) return resolvedConfigs
+  // we should have reversed the array, but the result (either 0 or 1 element) is the same; see below
+  if (!folders?.length) return configsFound
 
-  const wsPaths = unscopedConfig.inspect<string[]>(CONFIG_KEY)?.workspaceValue
+  const wsPaths = unscopedConfigSources?.workspaceValue
 
   if (folders.length === 1) {
     if (wsPaths?.length) {
-      resolvedConfigs.push({
+      configsFound.push({
         source: 'workspace',
         base: '/workspace',
         paths: wsPaths,
       })
     }
   } else if (folders.length > 1) {
+    if (wsPaths?.length) {
+      // this path is virtual; it makes sense only if the first component is a workspace folder path
+      configsFound.push({
+        source: 'workspace',
+        base: '/workspaces',
+        paths: wsPaths,
+      })
+    }
+
     for (const wsf of folders) {
       const wsfConfig = workspace.getConfiguration(CONFIG_SECTION, wsf.uri)
       const wsfPaths = wsfConfig.inspect<string[]>(CONFIG_KEY)?.workspaceFolderValue
       if (wsfPaths?.length) {
-        resolvedConfigs.push({
+        configsFound.push({
           source: 'workspaceFolder',
           base: `/workspaces/${wsf.name}`,
           paths: wsfPaths,
         })
       }
     }
-
-    if (wsPaths?.length) {
-      // this path is virtual; it makes sense only if the first component is a workspace folder path
-      resolvedConfigs.push({
-        source: 'workspace',
-        base: '/workspaces',
-        paths: wsPaths,
-      })
-    }
   }
 
   window.showInformationMessage('Configured libraries:', {
     modal: true,
-    detail: JSON.stringify(resolvedConfigs, null, 2),
+    detail: JSON.stringify(configsFound, null, 2),
   })
 
-  return resolvedConfigs
+  // we want the more specific scope to appear first
+  return configsFound.reverse()
 }
 
 async function _manageLibraries(context: ExtensionContext, ..._args: any[]) {

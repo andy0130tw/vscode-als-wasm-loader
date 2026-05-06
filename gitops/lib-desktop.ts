@@ -103,7 +103,12 @@ export async function gitClone(url: string, dest: Uri, ref?: string, options?: G
   await commands.executeCommand('git.close', dest)
 }
 
+function maybeRewriteGitSubmodulePath(): never {
+  throw new Error('Not supported on desktop version')
+}
+
 ;({
   fetchServerRefInfo,
   gitClone,
+  maybeRewriteGitSubmodulePath,
 } satisfies LibAPI)

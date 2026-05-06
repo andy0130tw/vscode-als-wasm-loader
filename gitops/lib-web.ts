@@ -1,12 +1,16 @@
-import { commands, extensions, Uri, window } from 'vscode'
+import { commands, env, extensions, UIKind, Uri, window } from 'vscode'
 import type { LibAPI, ServerRefInfo, GitCloneOptions } from '$gitops'
 
+type GitSubmoduleClonerAPI = LibAPI & {
+  getWorkspaceId(uri: Uri): string
+  listSubmodules(uri: Uri): { name: string, path: string, url: string }[]
+}
 
 async function ensureExtensionCommon(extensionID: string, extensionName: string = extensionID) {
   const openExtensionPage = () => commands.executeCommand('extension.open', `${extensionID}`)
 
   do {
-    const ext = extensions.getExtension<LibAPI>(extensionID)
+    const ext = extensions.getExtension<GitSubmoduleClonerAPI>(extensionID)
     if (ext != null) {
       if (!ext.isActive) {
         await ext.activate()
@@ -77,7 +81,26 @@ export async function gitClone(url: string, dest: Uri, ref?: string, options?: G
   return gitCloner.gitClone(url, dest, ref, options)
 }
 
+async function maybeRewriteGitSubmodulePath(path: string, wsuri: Uri) {
+  if (env.uiKind !== UIKind.Web) {
+    // bail out rather than return path silently
+    throw new Error('can only rewrite submodule URI on web')
+  }
+  const gitCloner = await ensureExtension()
+  const submodules = gitCloner.listSubmodules(wsuri)
+
+  for (let {name, path: submodPath} of submodules) {
+    const prefix = '/workspace/' + submodPath + '/'
+    if (path.startsWith(prefix)) {
+      return `/submodules/${gitCloner.getWorkspaceId(wsuri)}/${name}/` + path.slice(prefix.length)
+    }
+  }
+
+  return path
+}
+
 ;({
   fetchServerRefInfo,
   gitClone,
+  maybeRewriteGitSubmodulePath,
 } satisfies LibAPI)

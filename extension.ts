@@ -121,6 +121,13 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
           )
         }
 
+        const submodClonerStorageUri = Uri.joinPath(context.globalStorageUri, '../qbane.vscode-git-submodule-cloner')
+        if (await workspace.fs.stat(submodClonerStorageUri)) {
+          presetMountPoints.push(
+            { kind: 'vscodeFileSystem', uri: submodClonerStorageUri, mountPoint: '/submodules' }
+          )
+        }
+
         await options.presetupCallback?.({ memfsTempDir, memfsHome })
       }
 

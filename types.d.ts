@@ -89,7 +89,6 @@ interface LibraryEntry {
 
 export interface ConfiguredLibraryEntry {
   source: 'global' | 'workspace' | 'workspaceFolder'
-  base: string
   paths: string[]
 }
 

@@ -1,4 +1,4 @@
-import { fetchServerRefInfo, gitClone, RefEntry } from '$gitops'
+import { fetchServerRefInfo, gitClone, maybeRewriteGitSubmodulePath, RefEntry } from '$gitops'
 import {
   type ExtensionContext,
   FileType,
@@ -149,6 +149,8 @@ async function pickAndInstallFromLibraryCatalog(context: ExtensionContext) {
 
     qp.busy = false
     qp.items = [...tags, ...branches]
+    // the user might be interrupted to install the missing the extension dependency
+    qp.show()
 
     const def = tags.find(it => it.label === libPicked.descriptor.defaultRef)
     if (def) qp.activeItems = [def]
@@ -318,11 +320,11 @@ async function _listInstalledLibraries(context: ExtensionContext) {
   }
 }
 
-export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[]> {
+function probeLibraryConfig() {
   const CONFIG_SECTION = 'alsWasmLoader'
   const CONFIG_KEY = 'libraryFilePaths'
 
-  const configsFound: ConfiguredLibraryEntry[] = []
+  const configsFound: (ConfiguredLibraryEntry & { base: string, prefix?: Uri })[] = []
 
   const unscopedConfig = workspace.getConfiguration(CONFIG_SECTION)
   const unscopedConfigSources = unscopedConfig.inspect<string[]>(CONFIG_KEY)
@@ -347,6 +349,7 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
       configsFound.push({
         source: 'workspace',
         base: '/workspace',
+        prefix: folders[0].uri,
         paths: wsPaths,
       })
     }
@@ -367,6 +370,7 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
         configsFound.push({
           source: 'workspaceFolder',
           base: `/workspaces/${wsf.name}`,
+          prefix: wsf.uri,
           paths: wsfPaths,
         })
       }
@@ -380,6 +384,24 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
 
   // we want the more specific scope to appear first
   return configsFound.reverse()
+}
+
+export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[]> {
+
+  async function resolvePath(p: string, base: string, prefix: Uri | undefined) {
+    const resolved = p[0] === '/' ? p :  base + '/' + p
+    if (prefix?.scheme === 'github-vfs') {
+      return maybeRewriteGitSubmodulePath(resolved, prefix)
+    }
+    return resolved
+  }
+
+  function mapAsync<A, B>(arr: A[], mapper: (a: A) => Promise<B>): Promise<B[]> {
+    return Promise.all(arr.map(mapper))
+  }
+
+  return mapAsync(probeLibraryConfig(), async ({source, base, prefix, paths}) => (
+      { source, paths: await mapAsync(paths, p => resolvePath(p, base, prefix)) }))
 }
 
 async function _manageLibraries(context: ExtensionContext, ..._args: any[]) {

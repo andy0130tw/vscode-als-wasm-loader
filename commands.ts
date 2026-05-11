@@ -320,21 +320,27 @@ async function _listInstalledLibraries(context: ExtensionContext) {
   }
 }
 
+function joinPath(base: string, ...segs: string[]) {
+  const uri = Uri.from({ scheme: 'file', path: base })
+  return Uri.joinPath(uri, ...segs).path
+}
+
 function probeLibraryConfig() {
   const CONFIG_SECTION = 'alsWasmLoader'
   const CONFIG_KEY = 'libraryFilePaths'
 
-  const configsFound: (ConfiguredLibraryEntry & { base: string, prefix?: Uri })[] = []
+  const configsFound: ConfiguredLibraryEntry[] = []
 
   const unscopedConfig = workspace.getConfiguration(CONFIG_SECTION)
   const unscopedConfigSources = unscopedConfig.inspect<string[]>(CONFIG_KEY)
+
+  const toAbsolutePaths = (ps: string[], base: string) => ps.map(p => p[0] === '/' ? p : joinPath(base, p))
 
   const globalPaths = unscopedConfigSources?.globalValue
   if (globalPaths?.length) {
     configsFound.push({
       source: 'global',
-      base: '/',
-      paths: globalPaths,
+      paths: toAbsolutePaths(globalPaths, '/'),
     })
   }
 
@@ -348,9 +354,7 @@ function probeLibraryConfig() {
     if (wsPaths?.length) {
       configsFound.push({
         source: 'workspace',
-        base: '/workspace',
-        prefix: folders[0].uri,
-        paths: wsPaths,
+        paths: toAbsolutePaths(wsPaths, '/workspace'),
       })
     }
   } else if (folders.length > 1) {
@@ -358,8 +362,7 @@ function probeLibraryConfig() {
       // this path is virtual; it makes sense only if the first component is a workspace folder path
       configsFound.push({
         source: 'workspace',
-        base: '/workspaces',
-        paths: wsPaths,
+        paths: toAbsolutePaths(wsPaths, '/workspaces'),
       })
     }
 
@@ -369,39 +372,69 @@ function probeLibraryConfig() {
       if (wsfPaths?.length) {
         configsFound.push({
           source: 'workspaceFolder',
-          base: `/workspaces/${wsf.name}`,
-          prefix: wsf.uri,
-          paths: wsfPaths,
+          paths: toAbsolutePaths(wsfPaths, `/workspaces/${wsf.name}`),
         })
       }
     }
   }
-
-  window.showInformationMessage('Configured libraries:', {
-    modal: true,
-    detail: JSON.stringify(configsFound, null, 2),
-  })
 
   // we want the more specific scope to appear first
   return configsFound.reverse()
 }
 
 export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[]> {
+  const folderNameToUri = new Map((workspace.workspaceFolders ?? []).map(({ name, uri }) => [name, uri]))
 
-  async function resolvePath(p: string, base: string, prefix: Uri | undefined) {
-    const resolved = p[0] === '/' ? p :  base + '/' + p
-    if (prefix?.scheme === 'github-vfs') {
-      return maybeRewriteGitSubmodulePath(resolved, prefix)
+  function resolveCanonVFSPath(p: string) {
+    const PREFIX_WORKSPACE_SINGULAR = '/workspace/'
+    const PREFIX_WORKSPACE_PLURAL = '/workspaces/'
+
+    if (workspace.workspaceFolders?.length === 1) {
+      if (p.startsWith(PREFIX_WORKSPACE_SINGULAR)) {
+        return {
+          workspaceFolder: workspace.workspaceFolders[0].uri,
+          path: p.slice(PREFIX_WORKSPACE_SINGULAR.length),
+        }
+      }
+    } else if (p.startsWith(PREFIX_WORKSPACE_PLURAL)) {
+      const relPath = p.slice(PREFIX_WORKSPACE_PLURAL.length)
+      const pos = relPath.indexOf('/')
+      const wsfName = relPath.slice(0, pos)
+      const wsfUri = folderNameToUri.get(wsfName)
+      if (wsfUri) {
+        return {
+          workspaceFolder: wsfUri,
+          path: relPath.slice(pos + 1),
+        }
+      }
     }
-    return resolved
+
+    return { path: p }
+  }
+
+  async function resolveWithWorkspaceFolderMappings(p: string) {
+    const resolved = resolveCanonVFSPath(p)
+    if (resolved.workspaceFolder?.scheme === 'vscode-vfs') {
+      return maybeRewriteGitSubmodulePath(resolved.path, resolved.workspaceFolder)
+    }
+    return p
   }
 
   function mapAsync<A, B>(arr: A[], mapper: (a: A) => Promise<B>): Promise<B[]> {
     return Promise.all(arr.map(mapper))
   }
 
-  return mapAsync(probeLibraryConfig(), async ({source, base, prefix, paths}) => (
-      { source, paths: await mapAsync(paths, p => resolvePath(p, base, prefix)) }))
+  const resolvedConfigs = await mapAsync(probeLibraryConfig(), async ({ source, paths }) => ({
+    source, paths: await mapAsync(paths, resolveWithWorkspaceFolderMappings),
+  }))
+
+
+  window.showInformationMessage('Configured libraries:', {
+    modal: true,
+    detail: JSON.stringify(resolvedConfigs, null, 2),
+  })
+
+  return resolvedConfigs
 }
 
 async function _manageLibraries(context: ExtensionContext, ..._args: any[]) {

@@ -81,18 +81,14 @@ export async function gitClone(url: string, dest: Uri, ref?: string, options?: G
   return gitCloner.gitClone(url, dest, ref, options)
 }
 
-async function maybeRewriteGitSubmodulePath(path: string, wsuri: Uri) {
-  if (env.uiKind !== UIKind.Web) {
-    // bail out rather than return path silently
-    throw new Error('can only rewrite submodule URI on web')
-  }
+export async function maybeRewriteGitSubmodulePath(path: string, wsuri: Uri) {
   const gitCloner = await ensureExtension()
-  const submodules = gitCloner.listSubmodules(wsuri)
+  const submodules = gitCloner.listSubmodules?.(wsuri) ?? []
 
   for (let {name, path: submodPath} of submodules) {
-    const prefix = '/workspace/' + submodPath + '/'
-    if (path.startsWith(prefix)) {
-      return `/submodules/${gitCloner.getWorkspaceId(wsuri)}/${name}/` + path.slice(prefix.length)
+    const submodPathPrefix = submodPath + '/'
+    if (path.startsWith(submodPathPrefix)) {
+      return `/submodules/${gitCloner.getWorkspaceId(wsuri)}/${name}/` + path.slice(submodPathPrefix.length)
     }
   }
 

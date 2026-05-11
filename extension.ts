@@ -93,9 +93,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         throw new Error('Should pass mountPoints or rootFileSystem from the options parameter')
       }
 
-      const env = options.env ?
-        { ...AgdaLanguageServerFactory.defaultEnv, ...options.env } :
-        AgdaLanguageServerFactory.defaultEnv
+      const env = { ...AgdaLanguageServerFactory.defaultEnv, ...options.env }
 
       const agdaDataDirDesc: MountPointDescriptor =
         { kind: 'memoryFileSystem', fileSystem: memfsAgdaDataDir, mountPoint: env.Agda_datadir }
@@ -123,8 +121,10 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
 
         const submodClonerStorageUri = Uri.joinPath(context.globalStorageUri, '../qbane.vscode-git-submodule-cloner')
         if (await workspace.fs.stat(submodClonerStorageUri)) {
+          const env_ = env as Record<string, string>
+          env_.SUBMODULE_STORE_DIR = '/submodules'
           presetMountPoints.push(
-            { kind: 'vscodeFileSystem', uri: submodClonerStorageUri, mountPoint: '/submodules' }
+            { kind: 'vscodeFileSystem', uri: submodClonerStorageUri, mountPoint: env_.SUBMODULE_STORE_DIR }
           )
         }
 

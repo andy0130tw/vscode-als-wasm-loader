@@ -18,6 +18,13 @@ import {
 import * as ExtCommands from './commands'
 import { memfsUnzip, prepareMemfsFromAgdaDataZip } from './zip-utils'
 
+async function exists(uri: Uri) {
+  return workspace.fs.stat(uri).then(() => true, err => {
+    if (err?.code === 'FileNotFound') return false
+    throw err
+  })
+}
+
 function collectPipeOutput(readable: Readable) {
   let result = ''
   const decoder = new TextDecoder()
@@ -120,7 +127,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
         }
 
         const submodClonerStorageUri = Uri.joinPath(context.globalStorageUri, '../qbane.vscode-git-submodule-cloner')
-        if (await workspace.fs.stat(submodClonerStorageUri)) {
+        if (await exists(submodClonerStorageUri)) {
           const env_ = env as Record<string, string>
           env_.SUBMODULE_STORE_DIR = '/submodules'
           presetMountPoints.push(

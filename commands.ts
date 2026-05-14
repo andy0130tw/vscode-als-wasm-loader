@@ -372,6 +372,7 @@ function probeLibraryConfig() {
       if (wsfPaths?.length) {
         configsFound.push({
           source: 'workspaceFolder',
+          folderName: wsf.name,
           paths: toAbsolutePaths(wsfPaths, `/workspaces/${wsf.name}`),
         })
       }
@@ -424,14 +425,18 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
     return Promise.all(arr.map(mapper))
   }
 
-  const resolvedConfigs = await mapAsync(probeLibraryConfig(), async ({ source, paths }) => ({
-    source, paths: await mapAsync(paths, resolveWithWorkspaceFolderMappings),
+  const resolvedConfigs = await mapAsync(probeLibraryConfig(), async ({ paths, ...rest }) => ({
+    paths: await mapAsync(paths, resolveWithWorkspaceFolderMappings), ...rest,
   }))
 
   window.showInformationMessage('Configured libraries', {
     modal: true,
     detail: resolvedConfigs.length == 0 ? '(none)' : resolvedConfigs.map(config => {
-      return `From "${config.source}":\n` + config.paths.map(s => `\u2022 ${s}\n`)
+      const sourceDisp = (
+        config.source === 'workspaceFolder' ? `workspace folder settings "${config.folderName}"` :
+        config.source === 'workspace' ? 'workspace settings' :
+        'user settings')
+      return `From ${sourceDisp}:\n` + config.paths.map(s => `\u2022 ${s}\n`)
     }).join('\n'),
   })
 

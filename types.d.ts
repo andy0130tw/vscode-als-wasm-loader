@@ -87,10 +87,17 @@ interface LibraryEntry {
   paths: string[]
 }
 
-export interface ConfiguredLibraryEntry {
-  source: 'global' | 'workspace' | 'workspaceFolder'
+interface ConfiguredLibrary {
+  source: 'global' | 'workspace'
   paths: string[]
 }
+
+interface FolderConfiguredLibrary extends ConfiguredLibrary {
+  source: 'workspaceFolder'
+  folderName: string
+}
+
+export type ConfiguredLibraryEntry = ConfiguredLibrary | FolderConfiguredLibrary
 
 export interface ALSWasmLoaderExports {
   AgdaLanguageServerFactory: typeof AgdaLanguageServerFactory

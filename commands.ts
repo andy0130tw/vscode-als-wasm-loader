@@ -428,10 +428,11 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
     source, paths: await mapAsync(paths, resolveWithWorkspaceFolderMappings),
   }))
 
-
-  window.showInformationMessage('Configured libraries:', {
+  window.showInformationMessage('Configured libraries', {
     modal: true,
-    detail: JSON.stringify(resolvedConfigs, null, 2),
+    detail: resolvedConfigs.length == 0 ? '(none)' : resolvedConfigs.map(config => {
+      return `From "${config.source}":\n` + config.paths.map(s => `\u2022 ${s}\n`)
+    }).join('\n'),
   })
 
   return resolvedConfigs

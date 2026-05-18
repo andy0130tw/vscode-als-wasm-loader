@@ -11,6 +11,7 @@ import {
   env,
   window,
   workspace,
+  WorkspaceFolder,
 } from 'vscode'
 import type { ConfiguredLibraryEntry } from './types'
 
@@ -313,10 +314,12 @@ async function probeInstalledLibraries(root: Uri) {
 async function _listInstalledLibraries(context: ExtensionContext) {
   const entries = await probeInstalledLibraries(context.globalStorageUri)
   const paths = entries.filter(x => ('data' in x)).map(x => x.data.folderName + '/' + x.data.libFileName)
+  const configuredLibs = await listConfiguredLibraries().then(xss => xss.flatMap(xs => xs.paths.map(x => x.slice(1))))
   return {
-    base: '$ALSWASM_GLOBAL_STORE_DIR',
+    // FIXME: hot fix so that submodule paths do not need to start with base
+    base: '',
     prefix: context.globalStorageUri,
-    paths,
+    paths: [...configuredLibs, ...paths.map(x => '$ALSWASM_GLOBAL_STORE_DIR/' + x)],
   }
 }
 
@@ -325,22 +328,23 @@ function joinPath(base: string, ...segs: string[]) {
   return Uri.joinPath(uri, ...segs).path
 }
 
-function probeLibraryConfig() {
-  const CONFIG_SECTION = 'alsWasmLoader'
-  const CONFIG_KEY = 'libraryFilePaths'
+type ConfigMappers<T, U> = {
+  global: (paths: T) => U,
+  workspace: (paths: T, only: boolean) => U,
+  workspaceFolder: (paths: T, wsf: WorkspaceFolder) => U,
+}
 
-  const configsFound: ConfiguredLibraryEntry[] = []
+function aggregateConfigurations<T extends unknown[], U extends unknown[]>(section: string, key: string, mappers: ConfigMappers<T, U>) {
+  const configsFound = []
 
-  const unscopedConfig = workspace.getConfiguration(CONFIG_SECTION)
-  const unscopedConfigSources = unscopedConfig.inspect<string[]>(CONFIG_KEY)
-
-  const toAbsolutePaths = (ps: string[], base: string) => ps.map(p => p[0] === '/' ? p : joinPath(base, p))
+  const unscopedConfig = workspace.getConfiguration(section)
+  const unscopedConfigSources = unscopedConfig.inspect<T>(key)
 
   const globalPaths = unscopedConfigSources?.globalValue
   if (globalPaths?.length) {
     configsFound.push({
       source: 'global',
-      paths: toAbsolutePaths(globalPaths, '/'),
+      paths: mappers.global(globalPaths),
     })
   }
 
@@ -354,7 +358,7 @@ function probeLibraryConfig() {
     if (wsPaths?.length) {
       configsFound.push({
         source: 'workspace',
-        paths: toAbsolutePaths(wsPaths, '/workspace'),
+        paths: mappers.workspace(wsPaths, true),
       })
     }
   } else if (folders.length > 1) {
@@ -362,18 +366,18 @@ function probeLibraryConfig() {
       // this path is virtual; it makes sense only if the first component is a workspace folder path
       configsFound.push({
         source: 'workspace',
-        paths: toAbsolutePaths(wsPaths, '/workspaces'),
+        paths: mappers.workspace(wsPaths, false),
       })
     }
 
     for (const wsf of folders) {
-      const wsfConfig = workspace.getConfiguration(CONFIG_SECTION, wsf.uri)
-      const wsfPaths = wsfConfig.inspect<string[]>(CONFIG_KEY)?.workspaceFolderValue
+      const wsfConfig = workspace.getConfiguration(section, wsf.uri)
+      const wsfPaths = wsfConfig.inspect<T>(key)?.workspaceFolderValue
       if (wsfPaths?.length) {
         configsFound.push({
           source: 'workspaceFolder',
           folderName: wsf.name,
-          paths: toAbsolutePaths(wsfPaths, `/workspaces/${wsf.name}`),
+          paths: mappers.workspaceFolder(wsfPaths, wsf),
         })
       }
     }
@@ -415,7 +419,7 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
 
   async function resolveWithWorkspaceFolderMappings(p: string) {
     const resolved = resolveCanonVFSPath(p)
-    if (resolved.workspaceFolder?.scheme === 'vscode-vfs') {
+    if (resolved.workspaceFolder?.scheme === 'vscode-vfs' && resolved.workspaceFolder.authority.match(/^github\+?/)) {
       return maybeRewriteGitSubmodulePath(resolved.path, resolved.workspaceFolder)
     }
     return p
@@ -425,9 +429,25 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
     return Promise.all(arr.map(mapper))
   }
 
-  const resolvedConfigs = await mapAsync(probeLibraryConfig(), async ({ paths, ...rest }) => ({
+  const CONFIG_SECTION = 'alsWasmLoader'
+  const CONFIG_KEY = 'libraryFilePaths'
+
+  const toAbsolutePaths = (ps: string[], base: string) => ps.map(p => p[0] === '/' ? p : joinPath(base, p))
+  const mappers: ConfigMappers<string[], string[]> = {
+    global: ps => toAbsolutePaths(ps, '/'),
+    workspace: (ps, only) => toAbsolutePaths(ps, only ? '/workspace' : '/workspaces'),
+    workspaceFolder: (ps, wsf) => toAbsolutePaths(ps, `/workspaces/${wsf.name}`),
+  }
+
+  const configs = aggregateConfigurations(CONFIG_SECTION, CONFIG_KEY, mappers) as ConfiguredLibraryEntry[]
+
+  return mapAsync(configs, async ({ paths, ...rest }) => ({
     paths: await mapAsync(paths, resolveWithWorkspaceFolderMappings), ...rest,
   }))
+}
+
+export async function showConfiguredLibraries() {
+  const resolvedConfigs = await listConfiguredLibraries()
 
   window.showInformationMessage('Configured libraries', {
     modal: true,
@@ -439,8 +459,6 @@ export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[
       return `From ${sourceDisp}:\n` + config.paths.map(s => `\u2022 ${s}\n`)
     }).join('\n'),
   })
-
-  return resolvedConfigs
 }
 
 async function _manageLibraries(context: ExtensionContext, ..._args: any[]) {

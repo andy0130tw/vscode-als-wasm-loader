@@ -1,25 +1,5 @@
 import { commands, extensions, Uri, window } from 'vscode'
-import type { LibAPI, ServerRefInfo, GitCloneOptions } from '$gitops'
-
-interface GitSubmoduleSpec {
-  name: string
-  nameRaw?: string
-  path: string
-  url: string
-}
-
-interface GitModuleParseResult {
-  entries: GitSubmoduleSpec[]
-  errors: (Error & { name?: string })[]
-}
-
-
-type GitSubmoduleClonerAPI = {
-  gitClone: LibAPI['gitClone']
-  fetchServerRefInfo: LibAPI['fetchServerRefInfo']
-  getWorkspaceId(uri: Uri): string
-  listSubmodules(uri: Uri): Promise<GitModuleParseResult>
-}
+import type { LibAPI, ServerRefInfo, GitCloneOptions, GitSubmoduleClonerAPI } from '$gitops'
 
 async function ensureExtensionCommon(extensionID: string, extensionName: string = extensionID) {
   const openExtensionPage = () => commands.executeCommand('extension.open', `${extensionID}`)
@@ -103,7 +83,7 @@ export async function maybeRewriteGitSubmodulePath(path: string, wsuri: Uri) {
   for (let {name, path: submodPath} of submodules) {
     const submodPathPrefix = submodPath + '/'
     if (path.startsWith(submodPathPrefix)) {
-      return `/submodules/${gitCloner.getWorkspaceId(wsuri)}/${name}/` + path.slice(submodPathPrefix.length)
+      return `/submodules/${gitCloner.getWorkspaceId(wsuri)}/submodules/${name}/` + path.slice(submodPathPrefix.length)
     }
   }
 

@@ -7,7 +7,7 @@ import type {
   UserProcessOptions,
 } from './types'
 
-import { Uri, workspace, type ExtensionContext, commands } from 'vscode'
+import { Uri, workspace, type ExtensionContext, commands, extensions } from 'vscode'
 
 import * as WasmWasiCore from '@agda-web/wasm-wasi-core'
 import {
@@ -17,12 +17,20 @@ import {
 } from '@agda-web/wasm-wasi-lsp'
 import * as ExtCommands from './commands'
 import { memfsUnzip, prepareMemfsFromAgdaDataZip } from './zip-utils'
+import { GitSubmoduleClonerAPI } from '$gitops'
 
 async function exists(uri: Uri) {
   return workspace.fs.stat(uri).then(() => true, err => {
     if (err?.code === 'FileNotFound') return false
     throw err
   })
+}
+
+async function getSubmoduleClonerStorageUri() {
+  const ext = extensions.getExtension<GitSubmoduleClonerAPI>('qbane.vscode-git-submodule-cloner')
+  if (ext == null) return null
+  if (!ext.isActive) await ext.activate()
+  return ext.exports.storageUri ?? null
 }
 
 function collectPipeOutput(readable: Readable) {
@@ -126,12 +134,12 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
           )
         }
 
-        const submodClonerStorageUri = Uri.joinPath(context.globalStorageUri, '../qbane.vscode-git-submodule-cloner')
-        if (await exists(submodClonerStorageUri)) {
+        const maybeSubmodClonerStorageUri = await getSubmoduleClonerStorageUri()
+        if (maybeSubmodClonerStorageUri && await exists(maybeSubmodClonerStorageUri)) {
           const env_ = env as Record<string, string>
           env_.SUBMODULE_STORE_DIR = '/submodules'
           presetMountPoints.push(
-            { kind: 'vscodeFileSystem', uri: submodClonerStorageUri, mountPoint: env_.SUBMODULE_STORE_DIR }
+            { kind: 'vscodeFileSystem', uri: maybeSubmodClonerStorageUri, mountPoint: env_.SUBMODULE_STORE_DIR }
           )
         }
 
@@ -237,7 +245,7 @@ export async function activate(context: ExtensionContext): Promise<ALSWasmLoader
     commands.registerCommand('als-wasm-loader.manage-libraries', ExtCommands.manageLibraries(context)))
 
   context.subscriptions.push(
-    commands.registerCommand('als-wasm-loader.list-configured-libraries', ExtCommands.listConfiguredLibraries))
+    commands.registerCommand('als-wasm-loader.show-configured-libraries', ExtCommands.showConfiguredLibraries))
 
   return {
     AgdaLanguageServerFactory,

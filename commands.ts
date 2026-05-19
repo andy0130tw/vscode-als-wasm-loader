@@ -314,12 +314,17 @@ async function probeInstalledLibraries(root: Uri) {
 async function _listInstalledLibraries(context: ExtensionContext) {
   const entries = await probeInstalledLibraries(context.globalStorageUri)
   const paths = entries.filter(x => ('data' in x)).map(x => x.data.folderName + '/' + x.data.libFileName)
-  const configuredLibs = await listConfiguredLibraries().then(xss => xss.flatMap(xs => xs.paths.map(x => x.slice(1))))
+  // to strip the leading "/"
+  const configuredLibs = await listConfiguredLibraries()
+    .then(xss => xss.flatMap(xs => xs.paths.map(x => x.slice(1))))
   return {
     // FIXME: hot fix so that submodule paths do not need to start with base
     base: '',
     prefix: context.globalStorageUri,
-    paths: [...configuredLibs, ...paths.map(x => '$ALSWASM_GLOBAL_STORE_DIR/' + x)],
+    paths: [
+      ...paths.map(x => '$ALSWASM_GLOBAL_STORE_DIR/' + x),
+      ...configuredLibs,
+    ],
   }
 }
 
@@ -335,6 +340,7 @@ type ConfigMappers<T, U> = {
 }
 
 function aggregateConfigurations<T extends unknown[], U extends unknown[]>(section: string, key: string, mappers: ConfigMappers<T, U>) {
+  // NOTE: sorted by the same order as insertion in `libraries` file
   const configsFound = []
 
   const unscopedConfig = workspace.getConfiguration(section)
@@ -361,7 +367,7 @@ function aggregateConfigurations<T extends unknown[], U extends unknown[]>(secti
         paths: mappers.workspace(wsPaths, true),
       })
     }
-  } else if (folders.length > 1) {
+  } else {  // folders.length > 1
     if (wsPaths?.length) {
       // this path is virtual; it makes sense only if the first component is a workspace folder path
       configsFound.push({
@@ -383,8 +389,7 @@ function aggregateConfigurations<T extends unknown[], U extends unknown[]>(secti
     }
   }
 
-  // we want the more specific scope to appear first
-  return configsFound.reverse()
+  return configsFound
 }
 
 export async function listConfiguredLibraries(): Promise<ConfiguredLibraryEntry[]> {
@@ -456,7 +461,7 @@ export async function showConfiguredLibraries() {
         config.source === 'workspaceFolder' ? `workspace folder settings "${config.folderName}"` :
         config.source === 'workspace' ? 'workspace settings' :
         'user settings')
-      return `From ${sourceDisp}:\n` + config.paths.map(s => `\u2022 ${s}\n`)
+      return `From ${sourceDisp}:\n` + config.paths.map(s => `\u2022 ${s}\n`).join('')
     }).join('\n'),
   })
 }

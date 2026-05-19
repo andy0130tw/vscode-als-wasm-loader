@@ -55,9 +55,9 @@
 				"title": "Manage libraries..."
 			},
 			{
-				"command": "als-wasm-loader.list-configured-libraries",
+				"command": "als-wasm-loader.show-configured-libraries",
 				"category": "ALS WASM Loader",
-				"title": "List configured libraries"
+				"title": "Show configured libraries"
 			}
 		],
 		"configuration": {
@@ -70,7 +70,7 @@
 					},
 					"default": [],
 					"scope": "resource",
-					"markdownDescription": "Paths to [library files](https://agda.readthedocs.io/en/latest/tools/package-system.html#library-files) to be loaded by ALS-WASM inside its VFS. Each member will be inserted as a line to the `libraries` file, after basic path resolution.\n\nA path *not* beginning with `/` is interpreted as a relative path, resolved according to the scope it is defined. In user settings it is resolved against `/`, while in workspace (when single-rooted) or workspace-folder (when multi-rooted) settings, relative paths are resolved against the corresponding workspace folder.\n\nNote that the lists from all scopes will be combined per window."
+					"markdownDescription": "Paths to [library files](https://agda.readthedocs.io/en/latest/tools/package-system.html#library-files) to be loaded by ALS-WASM inside its virtual file system. After path resolution, each entry is written as one line in the generated `libraries` file.\n\nA path *not* beginning with `/` is interpreted as a relative path, resolved according to the scope it is defined. In user settings it is resolved against `/`, while in workspace (when single-rooted) or workspace-folder (when multi-rooted) settings, relative paths are resolved against the corresponding workspace folder. For example, [PLFA](https://github.com/plfa/plfa.github.io) can be set up with a single entry: `standard-library/standard-library.agda-lib`.\n\nNote that the lists from all scopes will be combined per window."
 				}
 			}
 		}

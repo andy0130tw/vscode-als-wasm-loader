@@ -92,9 +92,10 @@ interface ConfiguredLibrary {
   paths: string[]
 }
 
-interface FolderConfiguredLibrary extends ConfiguredLibrary {
+interface FolderConfiguredLibrary {
   source: 'workspaceFolder'
   folderName: string
+  paths: string[]
 }
 
 export type ConfiguredLibraryEntry = ConfiguredLibrary | FolderConfiguredLibrary

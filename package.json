@@ -29,7 +29,7 @@
 		"@types/node": "^22.15.30",
 		"@types/vscode": "1.89.0",
 		"esbuild": "^0.25.5",
-		"typescript": "^5.9.3"
+		"typescript": "^6.0.3"
 	},
 	"dependencies": {
 		"@agda-web/wasm-wasi-core": "file:vscode-wasm/wasm-wasi-core",
